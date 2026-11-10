@@ -18,15 +18,19 @@ public class Obstacle {
     }
 
     public void newObstacles(Snake snek, Coin coin, int amount) {
-        if (obstacles.size() > 50) {
-            return;
-        }
         Random rnd = new Random();
         Point p;
+        // Enforce the hard limit before every spawn.
+        // Keep x coordinates within valid grid bounds.
+        // Avoid collisions with existing obstacles.
+        // Retry any invalid candidate.
         for (int i=0; i<amount; i++) {
+            if (obstacles.size() >= 50) {
+                return;
+            }
             do {
-                p = new Point(rnd.nextInt(x) + 1, rnd.nextInt(y));
-            } while (coin.getPos().equals(p) || snek.getBody().contains(p) || snek.getHead().equals(p));
+                p = new Point(rnd.nextInt(x), rnd.nextInt(y));
+            } while (coin.getPos().equals(p) || snek.getBody().contains(p) || snek.getHead().equals(p) || obstacles.contains(p));
             obstacles.add(p);
         }
     }
