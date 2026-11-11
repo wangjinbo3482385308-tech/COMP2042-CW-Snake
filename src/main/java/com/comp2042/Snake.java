@@ -47,7 +47,13 @@ public class Snake {
                     head.translate(0, 1);
                     dead = true;
                 } else if (borderControl() && (ignoreBorders || noBorder)) {
+                    // Wrap to the opposite vertical edge.
+                    // Check the wrapped head against obstacles immediately.
+                    // Border wrapping must not bypass obstacle collisions.
                     head.setLocation(head.getX(), gy - 1);
+                    if (obstacle.getObstacles().contains(head)) {
+                        dead = true;
+                    }
                 }
                 break;
 
@@ -58,7 +64,13 @@ public class Snake {
                     head.translate(0, -1);
                     dead = true;
                 } else if (borderControl() && (ignoreBorders || noBorder)) {
+                    // Wrap to the opposite vertical edge.
+                    // Check the wrapped head against obstacles immediately.
+                    // Border wrapping must not bypass obstacle collisions.
                     head.setLocation(head.getX(), 0);
+                    if (obstacle.getObstacles().contains(head)) {
+                        dead = true;
+                    }
                 }
                 break;
 
@@ -69,7 +81,13 @@ public class Snake {
                     head.translate(1, 0);
                     dead = true;
                 } else if (borderControl() && (ignoreBorders || noBorder)) {
+                    // Wrap to the opposite horizontal edge.
+                    // Check the wrapped head against obstacles immediately.
+                    // Border wrapping must not bypass obstacle collisions.
                     head.setLocation(gx - 1, head.getY());
+                    if (obstacle.getObstacles().contains(head)) {
+                        dead = true;
+                    }
                 }
                 break;
 
@@ -80,12 +98,21 @@ public class Snake {
                     head.translate(-1, 0);
                     dead = true;
                 } else if (borderControl() && (ignoreBorders || noBorder)) {
+                    // Wrap to the opposite horizontal edge.
+                    // Check the wrapped head against obstacles immediately.
+                    // Border wrapping must not bypass obstacle collisions.
                     head.setLocation(0, head.getY());
+                    if (obstacle.getObstacles().contains(head)) {
+                        dead = true;
+                    }
                 }
                 break;
         }
 
-        if (body.size() > 4 && hitSelf() && !body.get(0).equals(head)) {
+        // Check self-collision for snakes of every length.
+        // Ignore only the tail tip that will move next.
+        // The hard-coded length limit must not hide collisions.
+        if (hitSelf() && !body.get(0).equals(head)) {
             dead = true;
         }
     }

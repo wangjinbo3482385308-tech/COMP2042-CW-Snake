@@ -12,13 +12,23 @@ public class Coin {
     public Coin(int x, int y, Snake snek, Obstacle obstacle) {
         int tx;
         int ty;
+        Random rnd = new Random();
+        // Cap random placement attempts for a full board.
+        // Stop after a bounded number of collisions.
+        // Mark the coin unavailable if no valid cell is found.
+        int maxAttempts = x * y * 2;
+        int attempts = 0;
         do {
-            Random rnd = new Random();
-
             tx = rnd.nextInt(x);
             ty = rnd.nextInt(y);
             pos = new Point(tx, ty);
-        } while (snek.getHead().equals(pos) || snek.getBody().contains(pos) || obstacle.getObstacles().contains(pos));
+            attempts++;
+        } while ((snek.getHead().equals(pos) || snek.getBody().contains(pos) || obstacle.getObstacles().contains(pos))
+                && attempts < maxAttempts);
+
+        if (snek.getHead().equals(pos) || snek.getBody().contains(pos) || obstacle.getObstacles().contains(pos)) {
+            pos = new Point(-1, -1);
+        }
     }
 
     public Point getPos() {
