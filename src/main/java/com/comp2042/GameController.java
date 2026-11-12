@@ -22,9 +22,14 @@ public class GameController {
     private String coinSoundPath = "resources/views/res/coinSound.wav";
     private Obstacle obstacle;
 
-    public static KeyCode key = KeyCode.LEFT;
-    public static KeyCode lastKey = KeyCode.LEFT;
+    // Keep input state isolated per controller.
+    // Initialise both keys to the starting direction.
+    private KeyCode key = KeyCode.LEFT;
+    private KeyCode lastKey = KeyCode.LEFT;
     private boolean keyPressed = false;
+    // Track the pause state explicitly.
+    // Resume only when the game is still active.
+    private boolean paused = false;
 
     private int legacyScoreMultiplier = 2;
 
@@ -45,10 +50,18 @@ public class GameController {
         animation.setRate(game.getSpeed());
     }
 
-    private final Timeline animation = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-        if (snek.getDead()) {
-            return;
-        } else {
+    private final Timeline animation = buildAnimation();
+
+    private Timeline buildAnimation() {
+        // Build the timeline in one place.
+        // Terminal frames can stop it directly.
+        return new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            if (snek.getDead() || game.gameWon()) {
+                // Stop terminal animation cycles immediately.
+                // Preserve the final board state for display.
+                animation.stop();
+                return;
+            }
 
             if (key.equals(KeyCode.LEFT)) {
                 snek.move('L');
@@ -60,11 +73,22 @@ public class GameController {
                 snek.move('D');
             }
 
+            if (snek.getDead()) {
+                // Freeze the simulation on the collision frame.
+                // Keep the game-over state visible.
+                animation.stop();
+            }
+
             if (!snek.getDead() && snek.ateCoin(coin)) {
                 powerCoin();
                 game.incScore();
                 if (game.gameWon()) {
+                    // Freeze the winning animation.
+                    // Render the final board and victory state.
+                    animation.stop();
                     gameView.drawGrid(coin, snek, obstacle, gameView.gc, false, 0);
+                    gameView.gameWon();
+                    gameView.updateScoreLabel();
                     return;
                 }
                 newCoin();
@@ -72,28 +96,45 @@ public class GameController {
 
             keyPressed = false;
 
-            if (!snek.getDead() || snek.hitSelf()) {
-                gameView.drawGrid(coin, snek, obstacle, gameView.gc, false, 0);
-            }
+            // Refresh every terminal movement frame.
+            // This includes wall and obstacle collisions.
+            gameView.drawGrid(coin, snek, obstacle, gameView.gc, false, 0);
 
             gameView.gameWon();
             gameView.gameOver(snek);
             gameView.updateScoreLabel();
-        }
-    }));
+        }));
+    }
 
     public void handle(KeyEvent event) {
-        if (event.getCode().isArrowKey()) animation.play();
-
-        if (valKey(event.getCode()) && !keyPressed) {
-            lastKey = key;
-            key = event.getCode();
-            keyPressed = true;
-            gameView.turnDir(snek);
+        if (event.getCode().isArrowKey()
+                && !paused
+                && !snek.getDead()
+                && !game.gameWon()) {
+            // Start only an active game.
+            // Ignore direction input while paused or finished.
+            animation.play();
+            if (valKey(event.getCode()) && !keyPressed) {
+                lastKey = key;
+                key = event.getCode();
+                keyPressed = true;
+                // Pass this controller's key history.
+                // Keep turn rendering independent of shared state.
+                gameView.turnDir(snek, lastKey, key);
+            }
         }
 
         if (event.getCode().equals(KeyCode.P)) {
-            animation.stop();
+            // Toggle pause only during an active game.
+            // Stop or resume the animation immediately.
+            if (!snek.getDead() && !game.gameWon()) {
+                paused = !paused;
+                if (paused) {
+                    animation.stop();
+                } else {
+                    animation.play();
+                }
+            }
         }
 
         if (event.getCode().equals(KeyCode.TAB)) {
@@ -116,9 +157,20 @@ public class GameController {
         }
 
         if (event.getCode().equals(KeyCode.ESCAPE)) {
-            MainMenuController mainMenuController = new MainMenuController();
-            mainMenuController.getViewManager().getPrimaryStage().show();
-            mainMenuController.getViewManager().getGameStage().close();
+            if (stage.isFullScreen()) {
+                // Exit fullscreen before leaving the game.
+                // Keep the current run active in windowed mode.
+                gameView.scaleToFullscreen(false, stage, obstacle, snek, coin);
+                gameView.gameOverLabel.setStyle("-fx-font-size: 15;");
+                gameView.gameWonLabel.setStyle("-fx-font-size: 15;");
+                gameView.scoreLabel.setStyle("-fx-font-size: 15;");
+            } else {
+                // Stop the simulation before returning to the menu.
+                // Reuse the stages managed by the application.
+                animation.stop();
+                Main.getViewManager().getPrimaryStage().show();
+                Main.getViewManager().getGameStage().close();
+            }
         }
     }
 
@@ -147,10 +199,19 @@ public class GameController {
         int unusedObstacleCount = new Random().nextInt(game.getWidth() * game.getHeight() / 20) + 3;
 
         animation.setRate(game.getSpeed());
+        // Reset directional history and input locking.
+        // Start every run from a consistent state.
         key = KeyCode.LEFT;
+        lastKey = KeyCode.LEFT;
         keyPressed = false;
+        // Clear the pause state for the new run.
+        // Resume remains disabled until P is pressed.
+        paused = false;
         game.resetScore();
         obstacle.reset();
+        // Remove turn markers from the previous run.
+        // Prevent stale corners on the fresh board.
+        gameView.resetTurns();
 
         gameView.gameWon();
         gameView.gameOver(snek);
@@ -171,8 +232,12 @@ public class GameController {
             // Avoid passing zero to Random.nextInt.
             // Preserve the existing minimum obstacle request.
             int maxRange = Math.max(1, game.getWidth() * game.getHeight() / 20);
+            int obstacleCount = obstacle.getObstacles().size();
             obstacle.newObstacles(snek, coin, rnd.nextInt(maxRange) + 3);
-            game.decMaxScore(obstacle.getObstacles().size());
+            // Count only obstacles added by this power-up.
+            // Keep the win target aligned with board occupancy.
+            int addedCount = obstacle.getObstacles().size() - obstacleCount;
+            game.decMaxScore(addedCount);
         } else if (coin.getClass().equals(BlueCoin.class)) {
             snek.ignoreBorders(true);
         }

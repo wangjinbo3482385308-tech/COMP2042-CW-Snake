@@ -24,12 +24,18 @@ public class Game {
         } else if (difficulty == 'H') {
             speed = 13;
             noBorder = false;
+            // Use a safe default for unknown difficulty codes.
+            // Keep normal speed and border collisions enabled.
+        } else {
+            speed = 8.5;
+            noBorder = false;
         }
+        // Apply the power-up setting exactly once.
+        // Remove duplicate assignment after construction.
         this.powerUp = powerUp;
         width = x;
         height = y;
         maxScore = x * y - 2;
-        this.powerUp = powerUp;
         if (height > 50) {
             multiplier = 10;
         } else {
@@ -38,7 +44,9 @@ public class Game {
     }
 
     public boolean gameWon() {
-        return score == maxScore;
+        // Treat reaching the target as a win.
+        // This also handles overshooting safely.
+        return score >= maxScore;
     }
 
     public void incScore() {
@@ -46,7 +54,9 @@ public class Game {
     }
 
     public void decMaxScore(int num) {
-        this.maxScore -= (num - 1);
+        // Reduce the target by the requested amount.
+        // Never place the target below the current score.
+        this.maxScore = Math.max(score, this.maxScore - num);
     }
 
     public int getWidth() {
@@ -58,8 +68,11 @@ public class Game {
     }
 
     public void resetScore() {
+        // Reset both score values for a new game.
+        // Restore the full-board win target.
         score = 0;
         scorePoints = 0;
+        maxScore = width * height - 2;
     }
 
     public Color getColor() {

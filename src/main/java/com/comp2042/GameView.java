@@ -174,15 +174,39 @@ public class GameView {
     }
 
     public void turnDir(Snake snek) {
-        if ((GameController.lastKey == KeyCode.LEFT && GameController.key == KeyCode.UP) || (GameController.lastKey == KeyCode.DOWN && GameController.key == KeyCode.RIGHT)) {
+        // Keep the legacy signature for existing callers.
+        // Use a neutral key pair so no stale turn marker is added.
+        turnDir(snek, KeyCode.LEFT, KeyCode.LEFT);
+    }
+
+    public void turnDir(Snake snek, KeyCode previousKey, KeyCode currentKey) {
+        // Use the supplied key history for this turn.
+        // Avoid shared static input state between controllers.
+        if ((previousKey == KeyCode.LEFT && currentKey == KeyCode.UP) || (previousKey == KeyCode.DOWN && currentKey == KeyCode.RIGHT)) {
             turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 2;
-        } else if ((GameController.lastKey == KeyCode.LEFT && GameController.key == KeyCode.DOWN) || (GameController.lastKey == KeyCode.UP && GameController.key == KeyCode.RIGHT)) {
+        } else if ((previousKey == KeyCode.LEFT && currentKey == KeyCode.DOWN) || (previousKey == KeyCode.UP && currentKey == KeyCode.RIGHT)) {
             turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 3;
-        } else if ((GameController.lastKey == KeyCode.RIGHT && GameController.key == KeyCode.UP) || (GameController.lastKey == KeyCode.DOWN && GameController.key == KeyCode.LEFT)) {
+        } else if ((previousKey == KeyCode.RIGHT && currentKey == KeyCode.UP) || (previousKey == KeyCode.DOWN && currentKey == KeyCode.LEFT)) {
             turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 1;
-        } else if ((GameController.lastKey == KeyCode.UP && GameController.key == KeyCode.LEFT) || (GameController.lastKey == KeyCode.RIGHT && GameController.key == KeyCode.DOWN)) {
+        } else if ((previousKey == KeyCode.UP && currentKey == KeyCode.LEFT) || (previousKey == KeyCode.RIGHT && currentKey == KeyCode.DOWN)) {
             turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 4;
         } else turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 0;
+    }
+
+    public void resetTurns() {
+        // Clear turn markers from the previous run.
+        // This avoids stale corner rendering after reset.
+        for (int x = 0; x < turnArray.length; x++) {
+            for (int y = 0; y < turnArray[x].length; y++) {
+                turnArray[x][y] = 0;
+            }
+        }
+    }
+
+    public boolean isFullsize() {
+        // Expose the current fullscreen scaling state.
+        // Callers can check this without changing the stage.
+        return fullsize;
     }
 
     public void gameOver(Snake snek) {
