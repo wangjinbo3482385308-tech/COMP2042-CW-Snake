@@ -9,7 +9,9 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        viewManager = new ViewManager();
+        // Pass the application stage into the view manager.
+        // Reuse the managed window throughout the application.
+        viewManager = new ViewManager(primaryStage);
         viewManager.initalizeMainMenu();
     }
 
