@@ -1,18 +1,24 @@
 package com.comp2042;
 
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
-import java.awt.*;
+import java.awt.Point;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GameView {
 
@@ -30,52 +36,83 @@ public class GameView {
     private double initY;
     private double fullScale = 1;
     private boolean fullsize = false;
-    private int[][] turnArray = new int[MainMenuController.getxValue()][MainMenuController.getyValue()];
+    private int[][] turnArray;
+
+    private final Map<Integer, Image> headRotationCache = new HashMap<>();
+    private final Map<Integer, Image> bodyRotationCache = new HashMap<>();
+    private final Map<Integer, Image> turnRotationCache = new HashMap<>();
+    private final Map<Integer, Image> tailRotationCache = new HashMap<>();
 
     public GameView(Game game) {
         this.game = game;
+        // Allocate turn markers from the actual board dimensions.
+        // Keep every access aligned with game coordinates.
+        turnArray = new int[game.getWidth()][game.getHeight()];
     }
 
     public void makeScene(Scene scene, Snake snek, Coin coin) {
-        Scene gameScene = scene;
-        gridCanvas = new Canvas(gameScene.getWidth(), gameScene.getHeight());
-        initX = scene.getWidth();
-        initY = scene.getHeight();
+        // Size the canvas from the board's own pixels.
+        // Keep the surrounding menu padding outside the canvas.
+        double boardWidth = game.getWidth() * game.getMultiplier();
+        double boardHeight = game.getHeight() * game.getMultiplier();
+        gridCanvas = new Canvas(boardWidth, boardHeight);
+        initX = boardWidth;
+        initY = boardHeight;
         gc = gridCanvas.getGraphicsContext2D();
         drawGrid(coin, snek, gc);
 
         gameOverLabel = new Label("GAME OVER");
         gameOverLabel.setId("gameOverLabel");
-        String css = "resources/views/styling.css";
-        gameOverLabel.getStylesheets().add(css);
         gameOverLabel.setVisible(false);
 
         gameWonLabel = new Label("YOU WON!");
         gameWonLabel.setId("gameWonLabel");
-        gameWonLabel.getStylesheets().add(css);
         gameWonLabel.setVisible(false);
 
         scoreLabel = new Label("Score: " + game.getScorePoints());
         scoreLabel.setId("scoreLabel");
-        scoreLabel.getStylesheets().add(css);
         scoreLabel.setFont(new Font("Arial", 20));
         scoreLabel.setVisible(true);
+
+        // Resolve the stylesheet from the classpath.
+        // Replace the invalid working-directory relative path.
+        URL cssLocation = GameView.class.getResource("/resources/views/styling.css");
+        if (cssLocation != null) {
+            String css = cssLocation.toExternalForm();
+            // Apply the resolved stylesheet to every game label.
+            // Keep all overlay text visually consistent.
+            gameOverLabel.getStylesheets().add(css);
+            gameWonLabel.getStylesheets().add(css);
+            scoreLabel.getStylesheets().add(css);
+        }
     }
 
     public void scaleToFullscreen(boolean fullScreen, Stage primaryStage, Obstacle obstacle, Snake snek, Coin coin) {
         primaryStage.setFullScreen(fullScreen);
 
-        double xScaling = Screen.getPrimary().getVisualBounds().getHeight() / initY;
-        double yScaling = Screen.getPrimary().getVisualBounds().getWidth() / initX;
-
         if (fullScreen && !fullsize) {
-            if (xScaling < yScaling) {
-                fullScale = xScaling;
-            } else {
-                fullScale = yScaling;
+            // Locate the screen that contains the game window.
+            // Fall back to the primary screen when it cannot be found.
+            List<Screen> screens = Screen.getScreensForRectangle(
+                    primaryStage.getX(),
+                    primaryStage.getY(),
+                    primaryStage.getWidth(),
+                    primaryStage.getHeight()
+            );
+            Screen screen = screens.isEmpty() ? Screen.getPrimary() : screens.get(0);
+            Rectangle2D bounds = screen.getVisualBounds();
+
+            // Match the width ratio to the board width.
+            // Match the height ratio to the board height.
+            double widthScaling = bounds.getWidth() / initX;
+            double heightScaling = bounds.getHeight() / initY;
+            fullScale = Math.min(widthScaling, heightScaling);
+            if (fullScale <= 0) {
+                fullScale = 1;
             }
-            gridCanvas.setWidth(gridCanvas.getWidth() * fullScale);
-            gridCanvas.setHeight(gridCanvas.getHeight() * fullScale);
+
+            gridCanvas.setWidth(initX * fullScale);
+            gridCanvas.setHeight(initY * fullScale);
             fullsize = true;
         } else if (!fullScreen) {
             fullScale = 1;
@@ -95,9 +132,12 @@ public class GameView {
 
         gc.drawImage(coin.getImage(), (coin.getPos().x * game.getMultiplier()) * fullScale, (coin.getPos().y * game.getMultiplier()) * fullScale, game.getMultiplier() * fullScale - 3 * fullScale, game.getMultiplier() * fullScale - 3 * fullScale);
 
+        // Fetch the body list only once per frame.
+        // Avoid allocating a new list for every body segment.
+        List<Point> body = snek.getBody();
         int bodyIndex = 0;
-        for (Point point : snek.getBody()) {
-            drawBody(snek, point, bodyIndex);
+        for (Point point : body) {
+            drawBody(snek, body, point, bodyIndex);
             bodyIndex++;
         }
 
@@ -115,9 +155,12 @@ public class GameView {
 
         gc.drawImage(coin.getImage(), (coin.getPos().x * game.getMultiplier()) * fullScale, (coin.getPos().y * game.getMultiplier()) * fullScale, game.getMultiplier() * fullScale - 3 * fullScale, game.getMultiplier() * fullScale - 3 * fullScale);
 
+        // Fetch the body list only once for the initial frame.
+        // Reuse it while drawing every body segment.
+        List<Point> body = snek.getBody();
         int bodyIndex = 0;
-        for (Point point : snek.getBody()) {
-            drawBody(snek, point, bodyIndex);
+        for (Point point : body) {
+            drawBody(snek, body, point, bodyIndex);
             bodyIndex++;
         }
 
@@ -125,52 +168,127 @@ public class GameView {
     }
 
     private void drawHead(Snake snek) {
-        snek.getImageViewHead().setRotate(snek.getSnakeDir());
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(Color.TRANSPARENT);
-        Image rotatedImage = snek.getImageViewHead().snapshot(params, null);
-        gc.drawImage(rotatedImage, (snek.getHead().x * game.getMultiplier()) * fullScale, (snek.getHead().y * game.getMultiplier()) * fullScale, game.getMultiplier() * fullScale * fullScale, game.getMultiplier() * fullScale * fullScale);
+        // Reuse the cached head snapshot for this direction.
+        // Keep the cell size proportional to the fullscreen scale.
+        Image rotatedImage = getRotatedImage(
+                snek.getImageViewHead(),
+                headRotationCache,
+                snek.getSnakeDir()
+        );
+        double cellSize = game.getMultiplier() * fullScale;
+        Point head = snek.getHead();
+        gc.drawImage(
+                rotatedImage,
+                head.x * game.getMultiplier() * fullScale,
+                head.y * game.getMultiplier() * fullScale,
+                cellSize,
+                cellSize
+        );
     }
 
-    private void drawBody(Snake snek, Point point, int index) {
+    private void drawBody(Snake snek, List<Point> body, Point point, int index) {
         Image rotatedImage;
-        if (snek.getBody().size() <= 1) {
-            snek.getImageViewTail().setRotate(snek.getSnakeDir());
-            SnapshotParameters params = new SnapshotParameters();
-            params.setFill(Color.TRANSPARENT);
-            rotatedImage = snek.getImageViewTail().snapshot(params, null);
+        if (body.size() <= 1) {
+            // Cache the single tail segment by direction.
+            // Reuse the image on later frames.
+            rotatedImage = getRotatedImage(
+                    snek.getImageViewTail(),
+                    tailRotationCache,
+                    snek.getSnakeDir()
+            );
         } else if (index == 0) {
             int rotateTail;
-            if (snek.getBody().get(1).getX() == snek.getBody().get(0).getX() && snek.getBody().get(1).getY() == snek.getBody().get(0).getY() - 1) {
+            if (body.get(1).getX() == body.get(0).getX() && body.get(1).getY() == body.get(0).getY() - 1) {
                 rotateTail = 0;
-            } else if (snek.getBody().get(1).getX() == snek.getBody().get(0).getX() && snek.getBody().get(1).getY() == snek.getBody().get(0).getY() + 1) {
+            } else if (body.get(1).getX() == body.get(0).getX() && body.get(1).getY() == body.get(0).getY() + 1) {
                 rotateTail = 180;
-            } else if (snek.getBody().get(1).getX() == snek.getBody().get(0).getX() - 1 && snek.getBody().get(1).getY() == snek.getBody().get(0).getY()) {
+            } else if (body.get(1).getX() == body.get(0).getX() - 1 && body.get(1).getY() == body.get(0).getY()) {
                 rotateTail = 270;
             } else {
                 rotateTail = 90;
             }
-            snek.getImageViewTail().setRotate(rotateTail);
-            SnapshotParameters params = new SnapshotParameters();
-            params.setFill(Color.TRANSPARENT);
-            rotatedImage = snek.getImageViewTail().snapshot(params, null);
-        } else if (index > 0 && (turnArray[(int) snek.getBody().get(index).getX()][(int) snek.getBody().get(index).getY()] != 0)) {
-            snek.getImageViewTurn().setRotate(90 * turnArray[(int) snek.getBody().get(index).getX()][(int) snek.getBody().get(index).getY()]);
-            SnapshotParameters params = new SnapshotParameters();
-            params.setFill(Color.TRANSPARENT);
-            rotatedImage = snek.getImageViewTurn().snapshot(params, null);
+            // Reuse the cached tail snapshot for this angle.
+            // Avoid rebuilding it during every animation frame.
+            rotatedImage = getRotatedImage(
+                    snek.getImageViewTail(),
+                    tailRotationCache,
+                    rotateTail
+            );
+        } else if (index > 0 && getTurn(point) != 0) {
+            // Reuse the cached turn snapshot for this angle.
+            // Keep the rotate lookup within the board bounds.
+            rotatedImage = getRotatedImage(
+                    snek.getImageViewTurn(),
+                    turnRotationCache,
+                    90 * getTurn(point)
+            );
         } else {
-            snek.getImageViewBody().setRotate(snek.getBodyDir(index));
+            // Reuse the cached body snapshot for this direction.
+            // Avoid repeated snapshots for straight segments.
+            rotatedImage = getRotatedImage(
+                    snek.getImageViewBody(),
+                    bodyRotationCache,
+                    snek.getBodyDir(index)
+            );
+        }
+
+        // Draw the body cell with the corrected scaled size.
+        // Keep width and height based on one multiplier.
+        double cellSize = game.getMultiplier() * fullScale;
+        gc.drawImage(
+                rotatedImage,
+                point.x * game.getMultiplier() * fullScale,
+                point.y * game.getMultiplier() * fullScale,
+                cellSize,
+                cellSize
+        );
+
+        if (index == 0) {
+            // Clear the tail turn marker after drawing.
+            // Avoid erasing it in the middle of the body loop.
+            setTurn(point, 0);
+        }
+    }
+
+    private Image getRotatedImage(ImageView imageView, Map<Integer, Image> cache, int rotation) {
+        // Normalize all rotations to a fixed angle key.
+        // Reuse an existing snapshot whenever one is available.
+        int normalizedRotation = Math.floorMod(rotation, 360);
+        return cache.computeIfAbsent(normalizedRotation, angle -> {
+            // Rotate the shared image view only when creating a snapshot.
+            // Store the result for later frames at the same angle.
+            imageView.setRotate(angle);
             SnapshotParameters params = new SnapshotParameters();
             params.setFill(Color.TRANSPARENT);
-            rotatedImage = snek.getImageViewBody().snapshot(params, null);
-        }
+            return imageView.snapshot(params, null);
+        });
+    }
 
-        if (turnArray[(int) snek.getBody().get(0).getX()][(int) snek.getBody().get(0).getY()] != 0) {
-            turnArray[(int) snek.getBody().get(0).getX()][(int) snek.getBody().get(0).getY()] = 0;
+    private boolean isInsideBoard(Point point) {
+        if (point == null) {
+            return false;
         }
+        int x = (int) point.getX();
+        int y = (int) point.getY();
+        // Check both dimensions before accessing the array.
+        // Treat off-board coordinates as invalid markers.
+        return x >= 0
+                && x < turnArray.length
+                && y >= 0
+                && y < turnArray[x].length;
+    }
 
-        gc.drawImage(rotatedImage, (point.x * game.getMultiplier()) * fullScale, (point.y * game.getMultiplier()) * fullScale, game.getMultiplier() * fullScale * fullScale, game.getMultiplier() * fullScale * fullScale);
+    private int getTurn(Point point) {
+        if (!isInsideBoard(point)) {
+            return 0;
+        }
+        return turnArray[(int) point.getX()][(int) point.getY()];
+    }
+
+    private void setTurn(Point point, int value) {
+        if (isInsideBoard(point)) {
+            turnArray[(int) point.getX()][(int) point.getY()] = value;
+        }
     }
 
     public void turnDir(Snake snek) {
@@ -182,15 +300,20 @@ public class GameView {
     public void turnDir(Snake snek, KeyCode previousKey, KeyCode currentKey) {
         // Use the supplied key history for this turn.
         // Avoid shared static input state between controllers.
+        Point head = snek.getHead();
+        int turn = 0;
         if ((previousKey == KeyCode.LEFT && currentKey == KeyCode.UP) || (previousKey == KeyCode.DOWN && currentKey == KeyCode.RIGHT)) {
-            turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 2;
+            turn = 2;
         } else if ((previousKey == KeyCode.LEFT && currentKey == KeyCode.DOWN) || (previousKey == KeyCode.UP && currentKey == KeyCode.RIGHT)) {
-            turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 3;
+            turn = 3;
         } else if ((previousKey == KeyCode.RIGHT && currentKey == KeyCode.UP) || (previousKey == KeyCode.DOWN && currentKey == KeyCode.LEFT)) {
-            turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 1;
+            turn = 1;
         } else if ((previousKey == KeyCode.UP && currentKey == KeyCode.LEFT) || (previousKey == KeyCode.RIGHT && currentKey == KeyCode.DOWN)) {
-            turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 4;
-        } else turnArray[(int) snek.getHead().getX()][(int) snek.getHead().getY()] = 0;
+            turn = 4;
+        }
+        // Guard the marker write against off-board coordinates.
+        // Keep unchanged cells safe during border wrapping.
+        setTurn(head, turn);
     }
 
     public void resetTurns() {

@@ -37,12 +37,20 @@ public class MainMenuController {
         GameController controller = new GameController(snek, coin, game, gameView, obstacle, gameStage);
 
         StackPane gamePane = new StackPane();
-        gameScene = new Scene(gamePane, game.getWidth() * game.getMultiplier(), game.getHeight() * game.getMultiplier());
+        // Reserve room for the twenty-pixel padding on every side.
+        // Keep the scene large enough to contain the full board canvas.
+        gameScene = new Scene(
+                gamePane,
+                game.getWidth() * game.getMultiplier() + 40,
+                game.getHeight() * game.getMultiplier() + 40
+        );
 
         gameScene.setOnKeyPressed(controller::handle);
 
         gameView.makeScene(gameScene, snek, coin);
         gamePane.getChildren().addAll(gameView.gridCanvas, gameView.gameOverLabel, gameView.gameWonLabel, gameView.scoreLabel);
+        // Apply the same padding used to size the scene.
+        // Prevent the canvas edges from being clipped.
         gamePane.setPadding(new Insets(20));
         gamePane.setAlignment(gameView.gameOverLabel, Pos.TOP_CENTER);
         gamePane.setAlignment(gameView.gameWonLabel, Pos.TOP_CENTER);
