@@ -5,7 +5,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.AnchorPane?>
 
-<AnchorPane id="backgroundPane" maxHeight="400.0" maxWidth="550.0" minHeight="400.0" minWidth="550.0" prefHeight="400.0" prefWidth="550.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.comp2042.MainMenuController">
+<AnchorPane id="backgroundPane" maxHeight="400.0" maxWidth="550.0" minHeight="400.0" minWidth="550.0" prefHeight="400.0" prefWidth="550.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.comp2042.MainMenuController">
     <stylesheets>
         <URL value="@styling.css" />
     </stylesheets>
