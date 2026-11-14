@@ -14,9 +14,9 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javafx.version>25.0.1</javafx.version>
+        <javafx.version>21.0.5</javafx.version>
         <!-- Main class (package "resources" matches the original project layout) -->
-        <mainClass>com.comp2042.Main</mainClass>
+        <mainClass>com.comp2042.Launcher</mainClass>
     </properties>
 
     <dependencies>
