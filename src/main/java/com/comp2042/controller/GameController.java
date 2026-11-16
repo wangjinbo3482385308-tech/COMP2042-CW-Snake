@@ -16,6 +16,9 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.util.HashSet;
+import java.util.Set;
+
 // Coordinates input, gameplay timing, and view updates.
 // Delegates coin effects to model polymorphism.
 public class GameController {
@@ -26,6 +29,9 @@ public class GameController {
     private final ViewManager viewManager;
     private final CoinFactory coinFactory;
     private final Timeline animation;
+    // Track held shortcut keys.
+    // Ignore operating-system key repeats.
+    private final Set<KeyCode> pressedKeys;
 
     private Snake snek;
     private Coin coin;
@@ -53,6 +59,9 @@ public class GameController {
         coinFactory = new CoinFactory();
         key = KeyCode.LEFT;
         lastKey = KeyCode.LEFT;
+        // Initialise held-key state.
+        // Start with every shortcut available.
+        pressedKeys = new HashSet<>();
         animation = buildAnimation();
         animation.setCycleCount(Animation.INDEFINITE);
         animation.setRate(game.getCurrentSpeed());
@@ -136,8 +145,18 @@ public class GameController {
     }
 
     // Routes keyboard commands to controller behavior.
+    // Filter automatic repeats for stateful shortcuts.
     public void handle(KeyEvent event) {
         KeyCode eventCode = event.getCode();
+
+        // Detect stateful shortcuts.
+        // Ignore their automatic repeats.
+        boolean shortcutKey = eventCode == KeyCode.P
+                || eventCode == KeyCode.TAB
+                || eventCode == KeyCode.ESCAPE;
+        if (shortcutKey && !pressedKeys.add(eventCode)) {
+            return;
+        }
 
         if (eventCode.isArrowKey()) {
             handleDirection(eventCode);
@@ -145,18 +164,36 @@ public class GameController {
             togglePause();
         } else if (eventCode == KeyCode.TAB) {
             reset();
-        } else if (eventCode == KeyCode.PLUS) {
+        // Accept every plus key variant.
+        // Cover main and keypad input.
+        } else if (eventCode == KeyCode.PLUS
+                || eventCode == KeyCode.EQUALS
+                || eventCode == KeyCode.ADD) {
             setFullscreen(true);
-        } else if (eventCode == KeyCode.MINUS) {
+        // Accept every minus key variant.
+        // Cover main and keypad input.
+        } else if (eventCode == KeyCode.MINUS
+                || eventCode == KeyCode.SUBTRACT) {
             setFullscreen(false);
         } else if (eventCode == KeyCode.ESCAPE) {
             leaveGame();
         }
     }
 
+    // Clears held shortcut keys.
+    // Re-arms shortcuts after release.
+    public void handleKeyReleased(KeyEvent event) {
+        pressedKeys.remove(event.getCode());
+    }
+
     // Accepts valid directions while a game can run.
     private void handleDirection(KeyCode eventCode) {
-        if (!canRun() || !valKey(eventCode) || keyPressed) {
+        // Ignore repeats of the active direction.
+        // Preserve the next turn opportunity.
+        if (!canRun()
+                || !valKey(eventCode)
+                || keyPressed
+                || eventCode.equals(key)) {
             return;
         }
 
