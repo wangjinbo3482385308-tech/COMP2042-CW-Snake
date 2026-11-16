@@ -1,5 +1,7 @@
 package com.comp2042;
 
+import com.comp2042.model.Game;
+import com.comp2042.model.GameState;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -7,8 +9,10 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+// Verifies core model behavior after the architecture refactor.
 class GameBasicTest {
 
+    // Checks normal board and movement defaults.
     @Test
     void normalDifficultyInitialisesExpectedBoardAndMovementSettings() {
         Game game = new Game(20, 20, false, 'N');
@@ -20,6 +24,7 @@ class GameBasicTest {
         assertFalse(game.isNoBorder());
     }
 
+    // Checks score counters and reset behavior.
     @Test
     void scoreMethodsUpdateTheExpectedValues() {
         Game game = new Game(20, 20, false, 'N');
@@ -35,6 +40,7 @@ class GameBasicTest {
         assertEquals(0, game.getScorePoints());
     }
 
+    // Checks exact target reductions.
     @Test
     void decMaxScoreSubtractsTheExactRequestedAmount() {
         Game game = new Game(20, 20, false, 'N');
@@ -45,6 +51,7 @@ class GameBasicTest {
         assertEquals(initialMaxScore - 5, maxScoreOf(game));
     }
 
+    // Checks that reset restores the original target.
     @Test
     void resetScoreRestoresTheInitialMaxScore() {
         Game game = new Game(20, 20, false, 'N');
@@ -60,6 +67,7 @@ class GameBasicTest {
         assertEquals(initialMaxScore, maxScoreOf(game));
     }
 
+    // Checks the fallback for unknown difficulty codes.
     @Test
     void unknownDifficultyUsesNormalSpeedFallback() {
         Game game = new Game(20, 20, false, '?');
@@ -68,6 +76,22 @@ class GameBasicTest {
         assertFalse(game.isNoBorder());
     }
 
+    // Checks initial state and temporary speed restoration.
+    @Test
+    void stateAndCurrentSpeedStartAndResetConsistently() {
+        Game game = new Game(20, 20, false, 'N');
+
+        assertEquals(GameState.READY, game.getState());
+        assertEquals(game.getSpeed(), game.getCurrentSpeed());
+
+        game.setState(GameState.RUNNING);
+        game.setCurrentSpeed(18);
+        game.resetCurrentSpeed();
+
+        assertEquals(game.getSpeed(), game.getCurrentSpeed());
+    }
+
+    // Reads the private score for compatibility checks.
     private static int scoreOf(Game game) {
         try {
             Field scoreField = Game.class.getDeclaredField("score");
@@ -78,6 +102,7 @@ class GameBasicTest {
         }
     }
 
+    // Reads the private target for compatibility checks.
     private static int maxScoreOf(Game game) {
         try {
             Field maxScoreField = Game.class.getDeclaredField("maxScore");
