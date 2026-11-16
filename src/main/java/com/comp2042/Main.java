@@ -1,18 +1,21 @@
 package com.comp2042;
 
+import com.comp2042.view.ViewManager;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
+// Starts the JavaFX application.
+// Delegates window setup to the view layer.
 public class Main extends Application {
 
     private static ViewManager viewManager;
 
+    // Stores the shared view manager.
+    // Opens the main menu after setup.
     @Override
     public void start(Stage primaryStage) {
-        // Pass the application stage into the view manager.
-        // Reuse the managed window throughout the application.
         viewManager = new ViewManager(primaryStage);
-        viewManager.initalizeMainMenu();
+        viewManager.initializeMainMenu();
     }
 
     public static void main(String[] args) {
