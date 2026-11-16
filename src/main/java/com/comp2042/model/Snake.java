@@ -47,6 +47,12 @@ public class Snake {
         if (hitSelf() && !body.get(0).equals(head)) {
             dead = true;
         }
+
+        // Undo the pending body increment.
+        // Keep the death frame consistent.
+        if (dead && !body.isEmpty()) {
+            body.remove(body.size() - 1);
+        }
     }
 
     // Applies one movement vector and its border behavior.

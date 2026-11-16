@@ -1,6 +1,8 @@
 package com.comp2042.model;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 // Provides shared coin placement and scoring behavior.
@@ -26,25 +28,35 @@ public class Coin {
         pos = findAvailablePosition(x, y, snake, obstacle);
     }
 
-    // Selects a free board cell within a bounded number of attempts.
+    // Collects every cell.
+    // Selects only an unoccupied cell.
     private Point findAvailablePosition(
             int width,
             int height,
             Snake snake,
             Obstacle obstacle
     ) {
-        Random random = new Random();
-        int maxAttempts = Math.max(1, width * height * 2);
-        for (int attempt = 0; attempt < maxAttempts; attempt++) {
-            Point candidate = new Point(
-                    random.nextInt(width),
-                    random.nextInt(height)
-            );
-            if (isAvailable(candidate, snake, obstacle)) {
-                return candidate;
+        List<Point> availableCells = new ArrayList<>();
+        for (int column = 0; column < width; column++) {
+            for (int row = 0; row < height; row++) {
+                Point candidate = new Point(column, row);
+                if (isAvailable(candidate, snake, obstacle)) {
+                    availableCells.add(candidate);
+                }
             }
         }
-        return new Point(-1, -1);
+
+        // Handle an exhausted board safely.
+        // Return an invalid coin position.
+        if (availableCells.isEmpty()) {
+            return new Point(-1, -1);
+        }
+
+        // Pick one free cell.
+        // Avoid retry starvation.
+        Random random = new Random();
+        int index = random.nextInt(availableCells.size());
+        return availableCells.get(index);
     }
 
     // Checks every board occupant before accepting a position.

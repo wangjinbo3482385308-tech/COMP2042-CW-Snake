@@ -2,6 +2,7 @@ package com.comp2042.view;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
@@ -55,11 +56,16 @@ public class ViewManager {
     }
 
     // Creates the stage used by one game session.
+    // Own the fullscreen escape handling.
+    // Leave through the controller instead.
     public void initGameStage() {
         gameStage = new Stage();
         gameStage.setTitle("Snake Game");
         gameStage.getIcons().add(AssetManager.getSnakeLogo());
         gameStage.setResizable(false);
+        gameStage.setFullScreenExitKeyCombination(
+                KeyCombination.NO_MATCH
+        );
     }
 
     public Stage getPrimaryStage() {

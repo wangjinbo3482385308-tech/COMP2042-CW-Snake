@@ -71,7 +71,12 @@ public class MainMenuController {
                 game.getWidth() * game.getMultiplier() + 40,
                 game.getHeight() * game.getMultiplier() + 40
         );
+        // Capture shortcut presses.
+        // Filter held-key repeats in the controller.
         gameScene.setOnKeyPressed(controller::handle);
+        // Track every key release.
+        // Restore shortcut availability.
+        gameScene.setOnKeyReleased(controller::handleKeyReleased);
         gameView.makeScene(snake, coin, obstacle);
         gameView.layoutGamePane(gamePane);
         return gameScene;

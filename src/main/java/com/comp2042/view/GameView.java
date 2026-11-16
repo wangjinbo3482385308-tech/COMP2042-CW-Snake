@@ -16,7 +16,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -141,8 +140,13 @@ public class GameView {
                     ? Screen.getPrimary()
                     : screens.get(0);
             Rectangle2D bounds = screen.getVisualBounds();
-            double widthScale = bounds.getWidth() / initialWidth;
-            double heightScale = bounds.getHeight() / initialHeight;
+
+            // Reserve the pane padding.
+            // Fit the board in the content area.
+            double availableWidth = Math.max(1.0, bounds.getWidth() - 40);
+            double availableHeight = Math.max(1.0, bounds.getHeight() - 40);
+            double widthScale = availableWidth / initialWidth;
+            double heightScale = availableHeight / initialHeight;
 
             fullScale = Math.min(widthScale, heightScale);
             if (fullScale <= 0) {
@@ -165,16 +169,30 @@ public class GameView {
     // Updates every font consistently for the current mode.
     public void updateFullscreenFontSizes(boolean isFullscreen) {
         double scale = isFullscreen ? fullScale : 1;
-        gameOverLabel.setFont(new Font("Arial", 25 * scale));
-        gameWonLabel.setFont(new Font("Arial", 25 * scale));
-        scoreLabel.setFont(new Font("Arial", 20 * scale));
+
+        // Use inline font sizes.
+        // Override the fixed author CSS.
+        gameOverLabel.setStyle(
+                "-fx-font-size: " + 25 * scale + "px;"
+        );
+        gameWonLabel.setStyle(
+                "-fx-font-size: " + 25 * scale + "px;"
+        );
+        scoreLabel.setStyle(
+                "-fx-font-size: " + 20 * scale + "px;"
+        );
     }
 
     // Renders one complete board frame.
     public void drawGrid(Coin coin, Snake snake, Obstacle obstacle) {
         gc.setFill(AssetManager.BACKGROUND_COLOR);
         gc.fillRect(0, 0, gridCanvas.getWidth(), gridCanvas.getHeight());
-        drawCoin(coin);
+
+        // Hide the consumed final coin.
+        // Keep the victory frame clean.
+        if (!game.gameWon()) {
+            drawCoin(coin);
+        }
 
         List<Point> body = snake.getBody();
         for (int index = 0; index < body.size(); index++) {
@@ -267,19 +285,34 @@ public class GameView {
         }
     }
 
-    // Derives the tail direction from its adjacent segment.
+    // Derive the tail direction.
+    // Support wrapped adjacent cells.
     private int getTailRotation(List<Point> body) {
         Point tail = body.get(0);
         Point next = body.get(1);
-        if (next.x == tail.x && next.y == tail.y - 1) {
+        int deltaX = next.x - tail.x;
+        int deltaY = next.y - tail.y;
+
+        // Detect upward adjacency.
+        // Include the top wrapping edge.
+        if (deltaY == -1 || deltaY == game.getHeight() - 1) {
             return 0;
         }
-        if (next.x == tail.x && next.y == tail.y + 1) {
+
+        // Detect downward adjacency.
+        // Include the bottom wrapping edge.
+        if (deltaY == 1 || deltaY == -(game.getHeight() - 1)) {
             return 180;
         }
-        if (next.x == tail.x - 1 && next.y == tail.y) {
+
+        // Detect leftward adjacency.
+        // Include the left wrapping edge.
+        if (deltaX == -1 || deltaX == game.getWidth() - 1) {
             return 270;
         }
+
+        // Handle the remaining right edge.
+        // Use the right-facing sprite.
         return 90;
     }
 
