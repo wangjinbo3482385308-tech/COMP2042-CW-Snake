@@ -73,7 +73,7 @@ public class Coin {
     // Awards the coin's base points.
     // Special coins extend this behavior.
     public void applyEffect(Game game, Snake snake, Obstacle obstacle) {
-        game.addPoints(getPoints());
+        game.addCoinPoints(getPoints());
     }
 
     public Point getPos() {
