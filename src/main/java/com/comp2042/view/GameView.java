@@ -16,6 +16,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -23,6 +24,7 @@ import java.awt.Point;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 // Renders the board and owns all JavaFX view nodes.
@@ -57,7 +59,9 @@ public class GameView {
         gc = gridCanvas.getGraphicsContext2D();
         gameOverLabel = createLabel("GAME OVER", "gameOverLabel");
         gameWonLabel = createLabel("YOU WON!", "gameWonLabel");
-        scoreLabel = createLabel("Score: 0", "scoreLabel");
+        // Initialize the HUD with the active tier.
+        // Keep score and multiplier in one label.
+        scoreLabel = createLabel(formatScoreText(0), "scoreLabel");
         scoreLabel.setVisible(true);
         turnArray = new int[game.getWidth()][game.getHeight()];
         headRotationCache = new HashMap<>();
@@ -111,6 +115,11 @@ public class GameView {
         gamePane.setAlignment(gameOverLabel, Pos.TOP_CENTER);
         gamePane.setAlignment(gameWonLabel, Pos.TOP_CENTER);
         gamePane.setAlignment(scoreLabel, Pos.BOTTOM_CENTER);
+        // Let the score label use the full board width.
+        // Center longer tier text during screen scaling.
+        scoreLabel.setMaxWidth(Double.MAX_VALUE);
+        scoreLabel.setAlignment(Pos.CENTER);
+        scoreLabel.setTextAlignment(TextAlignment.CENTER);
     }
 
     // Toggles fullscreen scaling and redraws the board.
@@ -472,9 +481,22 @@ public class GameView {
         }
     }
 
-    // Refreshes the score text from model data.
+    // Refresh score text from model data.
+    // Include the active speed tier.
     public void updateScoreLabel() {
-        scoreLabel.setText("Score: " + game.getScorePoints());
+        scoreLabel.setText(formatScoreText(game.getScorePoints()));
+    }
+
+    // Format the score and active tier together.
+    // Keep one decimal place for every multiplier.
+    private String formatScoreText(int scorePoints) {
+        return String.format(
+                Locale.ROOT,
+                "Score: %d | %s (%.1fx)",
+                scorePoints,
+                game.getSpeedTier().getDisplayName(),
+                game.getSpeedTier().getScoreMultiplier()
+        );
     }
 
     public boolean isFullsize() {
