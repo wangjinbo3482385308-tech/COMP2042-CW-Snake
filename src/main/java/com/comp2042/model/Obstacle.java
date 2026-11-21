@@ -63,6 +63,27 @@ public class Obstacle {
         return new ArrayList<>(obstacles);
     }
 
+    // Removes every obstacle at one cell.
+    // Reports whether the board changed.
+    public boolean removeObstacleAt(Point point) {
+        if (point == null) {
+            return false;
+        }
+
+        return obstacles.removeIf(point::equals);
+    }
+
+    // Clears a square area around one center.
+    // Includes cells exactly on the radius.
+    public void clearAreaAround(Point center, int radius) {
+        if (center == null || radius < 0) {
+            return;
+        }
+
+        obstacles.removeIf(point -> Math.abs(point.x - center.x) <= radius
+                && Math.abs(point.y - center.y) <= radius);
+    }
+
     // Clears all obstacle cells for a new run.
     public void reset() {
         obstacles.clear();

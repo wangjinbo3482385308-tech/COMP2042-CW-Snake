@@ -14,6 +14,7 @@ public class Snake {
     private final Obstacle obstacle;
 
     private boolean dead;
+    private boolean selfCollision;
     private boolean ignoreBorders;
     private final boolean noBorder;
     private int snakeDir;
@@ -33,19 +34,40 @@ public class Snake {
     // Moves the head in one grid direction.
     // Applies border, obstacle, and self collisions.
     public void move(char direction) {
+        move(direction, null);
+    }
+
+    // Moves with optional shield protection.
+    // Keeps the legacy movement contract intact.
+    public void move(char direction, PlayerInventory inventory) {
+        Point previousHead = new Point(head);
+        selfCollision = false;
         body.add(new Point(head));
 
         switch (direction) {
-            case 'U' -> moveHead(0, -1, 0);
-            case 'D' -> moveHead(0, 1, 180);
-            case 'L' -> moveHead(-1, 0, 270);
-            case 'R' -> moveHead(1, 0, 90);
+            case 'U' -> moveHead(0, -1, 0, inventory);
+            case 'D' -> moveHead(0, 1, 180, inventory);
+            case 'L' -> moveHead(-1, 0, 270, inventory);
+            case 'R' -> moveHead(1, 0, 90, inventory);
             default -> {
             }
         }
 
+        // Stop immediately after unresolved terrain collisions.
+        // Restore the pending segment to keep the death frame stable.
+        if (dead) {
+            body.remove(body.size() - 1);
+            return;
+        }
+
         if (hitSelf() && !body.get(0).equals(head)) {
-            dead = true;
+            if (inventory != null && inventory.consumeShield()) {
+                head.setLocation(previousHead);
+                body.remove(body.size() - 1);
+            } else {
+                selfCollision = true;
+                dead = true;
+            }
         }
 
         // Undo the pending body increment.
@@ -56,22 +78,51 @@ public class Snake {
     }
 
     // Applies one movement vector and its border behavior.
-    private void moveHead(int deltaX, int deltaY, int direction) {
+    private void moveHead(
+            int deltaX,
+            int deltaY,
+            int direction,
+            PlayerInventory inventory
+    ) {
         snakeDir = direction;
         head.translate(deltaX, deltaY);
 
-        if (isOutsideBoard() && (!ignoreBorders && !noBorder)
-                || obstacle.getObstacles().contains(head)) {
-            head.translate(-deltaX, -deltaY);
-            dead = true;
+        if (isOutsideBoard()) {
+            if (ignoreBorders || noBorder) {
+                wrapHead(deltaX, deltaY);
+                resolveObstacleAtWrappedHead(inventory);
+            } else if (inventory != null && inventory.consumeShield()) {
+                wrapHead(deltaX, deltaY);
+                obstacle.removeObstacleAt(head);
+            } else {
+                head.translate(-deltaX, -deltaY);
+                dead = true;
+            }
             return;
         }
 
-        if (isOutsideBoard() && (ignoreBorders || noBorder)) {
-            wrapHead(deltaX, deltaY);
-            if (obstacle.getObstacles().contains(head)) {
-                dead = true;
+        if (obstacle.getObstacles().contains(head)) {
+            if (inventory != null && inventory.consumeShield()) {
+                obstacle.removeObstacleAt(head);
+                return;
             }
+
+            head.translate(-deltaX, -deltaY);
+            dead = true;
+        }
+    }
+
+    // Resolves an obstacle at a wrapped destination.
+    // A shield clears the landing cell.
+    private void resolveObstacleAtWrappedHead(PlayerInventory inventory) {
+        if (!obstacle.getObstacles().contains(head)) {
+            return;
+        }
+
+        if (inventory != null && inventory.consumeShield()) {
+            obstacle.removeObstacleAt(head);
+        } else {
+            dead = true;
         }
     }
 
@@ -130,6 +181,32 @@ public class Snake {
 
     public boolean getDead() {
         return dead;
+    }
+
+    // Revives at the board center.
+    // Rebuilds half the body along the right side.
+    public void reviveAtCenter(int width, int height, Obstacle obstacle) {
+        int centerX = width / 2;
+        int centerY = height / 2;
+        dead = false;
+        selfCollision = false;
+        snakeDir = 270;
+        head.setLocation(centerX, centerY);
+
+        if (obstacle != null) {
+            obstacle.clearAreaAround(head, 1);
+        }
+
+        int requestedSize = Math.max(1, body.size() / 2);
+        int availableCells = Math.max(0, width - 1 - centerX);
+        int newBodySize = Math.min(requestedSize, availableCells);
+        body.clear();
+
+        // Keep the established tail-to-head order.
+        // Farthest cells are stored first.
+        for (int offset = newBodySize; offset >= 1; offset--) {
+            body.add(new Point(centerX + offset, centerY));
+        }
     }
 
     // Enables or disables temporary border wrapping.

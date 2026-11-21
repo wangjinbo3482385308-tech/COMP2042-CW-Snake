@@ -7,6 +7,7 @@ public class Game {
     private final int height;
     private final double multiplier;
     private final boolean powerUp;
+    private final PlayerInventory inventory = new PlayerInventory();
 
     private double speed;
     private boolean noBorder;
@@ -98,15 +99,17 @@ public class Game {
         scorePoints = 0;
         maxScore = width * height - 2;
         state = GameState.READY;
+        inventory.reset();
     }
 
     // Adds points with the active tier multiplier.
     // The win counter remains unchanged.
     public void addPoints(int points) {
-        int scaledPoints = (int) Math.round(
+        int gainedPoints = (int) Math.round(
                 points * speedTier.getScoreMultiplier()
         );
-        scorePoints += scaledPoints;
+        scorePoints += gainedPoints;
+        inventory.addShopPoints(gainedPoints);
     }
 
     // Preserves legacy coin scoring.
@@ -116,6 +119,7 @@ public class Game {
             addPoints(points);
         } else {
             scorePoints += points;
+            inventory.addShopPoints(points);
         }
     }
 
@@ -154,6 +158,10 @@ public class Game {
 
     public boolean isPowerUp() {
         return powerUp;
+    }
+
+    public PlayerInventory getInventory() {
+        return inventory;
     }
 
     public double getSpeed() {
