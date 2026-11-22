@@ -82,16 +82,44 @@ public class GameController {
             return;
         }
 
+        // Advance active powers using real gameplay time.
+        // A stopped timeline freezes this countdown.
+        double deltaSeconds = 1.0 / Math.max(
+                0.1,
+                animation.getRate()
+        );
+        game.getInventory().tickMagnet(deltaSeconds);
+
         moveSnake();
         if (snek.getDead()) {
-            game.setState(GameState.GAME_OVER);
-            renderFrame();
-            animation.stop();
-            return;
+            // Spend a held revive stone before ending the run.
+            // Restore the snake at the safe board center.
+            if (game.getInventory().consumeReviveStone()) {
+                snek.reviveAtCenter(
+                        game.getWidth(),
+                        game.getHeight(),
+                        obstacle
+                );
+                // Resume with the default leftward direction.
+                // Clear the held direction state as well.
+                key = KeyCode.LEFT;
+                lastKey = KeyCode.LEFT;
+                keyPressed = false;
+                // Remove turn markers from the previous body.
+                // Keep the revived snake visually clean.
+                gameView.resetTurns();
+            } else {
+                game.setState(GameState.GAME_OVER);
+                renderFrame();
+                animation.stop();
+                return;
+            }
         }
 
-        if (snek.ateCoin(coin)) {
-            applyCoinEffect();
+        // Collect by direct contact or active magnet range.
+        // Both paths share scoring and growth behavior.
+        if (snek.collectCoin(coin, game.getInventory())) {
+            powerCoin();
             game.incScore();
 
             if (game.gameWon()) {
@@ -108,20 +136,22 @@ public class GameController {
     }
 
     // Maps the current key to a model movement command.
+    // Shield protection participates in every movement.
     private void moveSnake() {
         if (key == KeyCode.LEFT) {
-            snek.move('L');
+            snek.move('L', game.getInventory());
         } else if (key == KeyCode.RIGHT) {
-            snek.move('R');
+            snek.move('R', game.getInventory());
         } else if (key == KeyCode.UP) {
-            snek.move('U');
+            snek.move('U', game.getInventory());
         } else if (key == KeyCode.DOWN) {
-            snek.move('D');
+            snek.move('D', game.getInventory());
         }
     }
 
     // Resets temporary powers before applying the new coin.
-    private void applyCoinEffect() {
+    // Magnet collection uses the same power pipeline.
+    private void powerCoin() {
         game.resetCurrentSpeed();
         snek.ignoreBorders(false);
         coin.applyEffect(game, snek, obstacle);
@@ -149,17 +179,20 @@ public class GameController {
     public void handle(KeyEvent event) {
         KeyCode eventCode = event.getCode();
 
-        // Detect stateful shortcuts.
+        // Detect stateful and shop shortcuts.
         // Ignore their automatic repeats.
         boolean shortcutKey = eventCode == KeyCode.P
                 || eventCode == KeyCode.TAB
-                || eventCode == KeyCode.ESCAPE;
+                || eventCode == KeyCode.ESCAPE
+                || isShopShortcut(eventCode);
         if (shortcutKey && !pressedKeys.add(eventCode)) {
             return;
         }
 
         if (eventCode.isArrowKey()) {
             handleDirection(eventCode);
+        } else if (isShopShortcut(eventCode)) {
+            handleShopPurchase(eventCode);
         } else if (eventCode == KeyCode.P) {
             togglePause();
         } else if (eventCode == KeyCode.TAB) {
@@ -180,8 +213,44 @@ public class GameController {
         }
     }
 
+    // Reports whether a key buys a shop item.
+    // Supports main and keypad number rows.
+    private boolean isShopShortcut(KeyCode eventCode) {
+        return eventCode == KeyCode.DIGIT1
+                || eventCode == KeyCode.NUMPAD1
+                || eventCode == KeyCode.DIGIT2
+                || eventCode == KeyCode.NUMPAD2
+                || eventCode == KeyCode.DIGIT3
+                || eventCode == KeyCode.NUMPAD3;
+    }
+
+    // Buys the item selected by a number key.
+    // Reject purchases after the run has ended.
+    private void handleShopPurchase(KeyCode eventCode) {
+        if (snek.getDead() || game.gameWon()) {
+            return;
+        }
+
+        boolean purchased;
+        if (eventCode == KeyCode.DIGIT1 || eventCode == KeyCode.NUMPAD1) {
+            purchased = game.getInventory().buyShield();
+        } else if (eventCode == KeyCode.DIGIT2
+                || eventCode == KeyCode.NUMPAD2) {
+            purchased = game.getInventory().buyMagnet();
+        } else {
+            purchased = game.getInventory().buyReviveStone();
+        }
+
+        // Refresh the board immediately after a purchase.
+        // Update the HUD with the new stock and points.
+        if (purchased) {
+            gameView.drawGrid(coin, snek, obstacle);
+            gameView.updateScoreLabel();
+        }
+    }
+
     // Clears held shortcut keys.
-    // Re-arms shortcuts after release.
+    // Re-arms shop and session shortcuts after release.
     public void handleKeyReleased(KeyEvent event) {
         pressedKeys.remove(event.getCode());
     }
