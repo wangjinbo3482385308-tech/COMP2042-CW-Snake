@@ -166,20 +166,24 @@ class PlayerInventoryTest {
     }
 
     // Buys the single revive stone.
-    // Blocks duplicate purchases and consumption.
+    // Blocks reuse after its first consumption.
     @Test
     @DisplayName("Revive stone uses one purchase and one consumption")
     void reviveStoneUsesSinglePurchaseAndConsumption() {
-        inventory.addShopPoints(150);
+        inventory.addShopPoints(250);
 
         assertTrue(inventory.buyReviveStone());
         assertFalse(inventory.buyReviveStone());
         assertTrue(inventory.hasReviveStone());
-        assertEquals(50, inventory.getShopPoints());
+        assertFalse(inventory.hasUsedReviveStone());
+        assertEquals(150, inventory.getShopPoints());
 
         assertTrue(inventory.consumeReviveStone());
         assertFalse(inventory.hasReviveStone());
+        assertTrue(inventory.hasUsedReviveStone());
         assertFalse(inventory.consumeReviveStone());
+        assertFalse(inventory.buyReviveStone());
+        assertEquals(150, inventory.getShopPoints());
     }
 
     // Creates a long dead snake.
@@ -235,6 +239,7 @@ class PlayerInventoryTest {
         assertEquals(0, inventory.getShieldPurchases());
         assertEquals(0.0, inventory.getMagnetTimeRemaining());
         assertFalse(inventory.hasReviveStone());
+        assertFalse(inventory.hasUsedReviveStone());
     }
 
     // Grows the snake along a straight line.

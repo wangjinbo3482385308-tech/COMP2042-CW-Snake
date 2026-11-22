@@ -56,13 +56,13 @@ public class Game {
         scoreMultiplierEnabled = true;
     }
 
-    // Preserves settings used by the legacy API.
-    // Letter matching ignores case.
+    // Preserves speed settings used by the legacy API.
+    // Border passing remains a BlueCoin-only effect.
     private void applyLegacyDifficulty(char difficulty) {
         char normalizedDifficulty = Character.toUpperCase(difficulty);
         if (normalizedDifficulty == 'E') {
             speed = 8.5;
-            noBorder = true;
+            noBorder = false;
         } else if (normalizedDifficulty == 'H') {
             speed = 13;
             noBorder = false;

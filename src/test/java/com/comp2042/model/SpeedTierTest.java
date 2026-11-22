@@ -27,7 +27,7 @@ class SpeedTierTest {
         assertEquals("Normal", SpeedTier.NORMAL.getDisplayName());
         assertEquals(8.5, SpeedTier.NORMAL.getBaseSpeed());
         assertEquals(1.5, SpeedTier.NORMAL.getScoreMultiplier());
-        assertTrue(SpeedTier.NORMAL.isNoBorder());
+        assertFalse(SpeedTier.NORMAL.isNoBorder());
     }
 
     @Test
@@ -36,7 +36,7 @@ class SpeedTierTest {
         assertEquals("Fast", SpeedTier.FAST.getDisplayName());
         assertEquals(12.0, SpeedTier.FAST.getBaseSpeed());
         assertEquals(2.0, SpeedTier.FAST.getScoreMultiplier());
-        assertTrue(SpeedTier.FAST.isNoBorder());
+        assertFalse(SpeedTier.FAST.isNoBorder());
     }
 
     @Test
@@ -63,7 +63,7 @@ class SpeedTierTest {
         assertSame(SpeedTier.NORMAL, game.getSpeedTier());
         assertEquals(8.5, game.getSpeed());
         assertEquals(8.5, game.getCurrentSpeed());
-        assertTrue(game.isNoBorder());
+        assertFalse(game.isNoBorder());
     }
 
     @Test
@@ -98,13 +98,38 @@ class SpeedTierTest {
         assertSame(SpeedTier.FAST, game.getSpeedTier());
         assertEquals(12.0, game.getSpeed());
         assertEquals(12.0, game.getCurrentSpeed());
-        assertTrue(game.isNoBorder());
+        assertFalse(game.isNoBorder());
 
         game.setSpeedTier(null);
 
         assertSame(SpeedTier.NORMAL, game.getSpeedTier());
         assertEquals(8.5, game.getSpeed());
         assertEquals(8.5, game.getCurrentSpeed());
-        assertTrue(game.isNoBorder());
+        assertFalse(game.isNoBorder());
+    }
+
+    // Builds a normal-tier snake from default game settings.
+    // Expects a wall collision to kill it before any BlueCoin.
+    @Test
+    @DisplayName("Normal speed keeps walls closed until a blue coin")
+    void normalTierKeepsWallsClosedUntilBlueCoin() {
+        Game game = new Game(20, 20, SpeedTier.NORMAL, false);
+        Obstacle obstacle = new Obstacle(
+                game.getWidth(),
+                game.getHeight()
+        );
+        Snake snake = new Snake(
+                game.getWidth(),
+                game.getHeight(),
+                game.isNoBorder(),
+                obstacle
+        );
+
+        for (int step = 0; step < 11; step++) {
+            snake.move('L');
+        }
+
+        assertTrue(snake.getDead());
+        assertEquals(0, snake.getHead().x);
     }
 }

@@ -166,6 +166,22 @@ public class Snake {
         return ate;
     }
 
+    // Handles direct contact or magnet-assisted collection.
+    // Keeps the pending segment for either collection path.
+    // Removes the tail only when the coin is out of reach.
+    public boolean collectCoin(Coin coin, PlayerInventory inventory) {
+        Point coinPosition = coin.getPos();
+        boolean directCollection = head.equals(coinPosition);
+        boolean magnetCollection = inventory != null
+                && inventory.isWithinMagnetRange(head, coinPosition);
+
+        if (!directCollection && !magnetCollection) {
+            body.remove(0);
+            return false;
+        }
+        return true;
+    }
+
     // Reports whether the head overlaps the body.
     public boolean hitSelf() {
         return body.contains(head);

@@ -3,6 +3,8 @@ package com.comp2042.view;
 import com.comp2042.model.Coin;
 import com.comp2042.model.Game;
 import com.comp2042.model.Obstacle;
+import com.comp2042.model.PlayerInventory;
+import com.comp2042.model.PowerUpType;
 import com.comp2042.model.Snake;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -16,6 +18,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -60,7 +64,7 @@ public class GameView {
         gameOverLabel = createLabel("GAME OVER", "gameOverLabel");
         gameWonLabel = createLabel("YOU WON!", "gameWonLabel");
         // Initialize the HUD with the active tier.
-        // Keep score and multiplier in one label.
+        // Include shop stock in the same label.
         scoreLabel = createLabel(formatScoreText(0), "scoreLabel");
         scoreLabel.setVisible(true);
         turnArray = new int[game.getWidth()][game.getHeight()];
@@ -114,12 +118,13 @@ public class GameView {
         gamePane.setPadding(new Insets(20));
         gamePane.setAlignment(gameOverLabel, Pos.TOP_CENTER);
         gamePane.setAlignment(gameWonLabel, Pos.TOP_CENTER);
-        gamePane.setAlignment(scoreLabel, Pos.BOTTOM_CENTER);
-        // Let the score label use the full board width.
-        // Center longer tier text during screen scaling.
+        gamePane.setAlignment(scoreLabel, Pos.TOP_LEFT);
+        // Keep the HUD at the top of the play area.
+        // Use the full width for two compact rows.
         scoreLabel.setMaxWidth(Double.MAX_VALUE);
-        scoreLabel.setAlignment(Pos.CENTER);
-        scoreLabel.setTextAlignment(TextAlignment.CENTER);
+        scoreLabel.setAlignment(Pos.TOP_LEFT);
+        scoreLabel.setTextAlignment(TextAlignment.LEFT);
+        StackPane.setMargin(scoreLabel, new Insets(2, 2, 0, 2));
     }
 
     // Toggles fullscreen scaling and redraws the board.
@@ -179,8 +184,8 @@ public class GameView {
     public void updateFullscreenFontSizes(boolean isFullscreen) {
         double scale = isFullscreen ? fullScale : 1;
 
-        // Use inline font sizes.
-        // Override the fixed author CSS.
+        // Use compact inline HUD sizing.
+        // Scale it with the current canvas mode.
         gameOverLabel.setStyle(
                 "-fx-font-size: " + 25 * scale + "px;"
         );
@@ -188,7 +193,9 @@ public class GameView {
                 "-fx-font-size: " + 25 * scale + "px;"
         );
         scoreLabel.setStyle(
-                "-fx-font-size: " + 20 * scale + "px;"
+                "-fx-font-size: " + 12 * scale + "px;"
+                        + " -fx-text-fill: #111111;"
+                        + " -fx-padding: 2 6;"
         );
     }
 
@@ -196,6 +203,12 @@ public class GameView {
     public void drawGrid(Coin coin, Snake snake, Obstacle obstacle) {
         gc.setFill(AssetManager.BACKGROUND_COLOR);
         gc.fillRect(0, 0, gridCanvas.getWidth(), gridCanvas.getHeight());
+
+        // Show the active magnet area below all actors.
+        // Clip the five-by-five grid to the board.
+        if (game.getInventory().isMagnetActive()) {
+            drawMagnetRange(snake);
+        }
 
         // Hide the consumed final coin.
         // Keep the victory frame clean.
@@ -208,7 +221,120 @@ public class GameView {
             drawBody(snake, body, body.get(index), index);
         }
         drawHead(snake);
+
+        // Mark an available shield around the head.
+        // Draw it with the shared canvas scale.
+        if (game.getInventory().getShieldCharges() > 0) {
+            drawShieldHalo(snake);
+        }
+
         drawObstacles(obstacle);
+        drawMagnetTimer();
+    }
+
+    // Draws the magnet's five-by-five influence area.
+    // Uses a translucent gold fill and a crisp border.
+    private void drawMagnetRange(Snake snake) {
+        Point head = snake.getHead();
+        int minX = Math.max(0, head.x - PlayerInventory.MAGNET_RADIUS);
+        int maxX = Math.min(
+                game.getWidth() - 1,
+                head.x + PlayerInventory.MAGNET_RADIUS
+        );
+        int minY = Math.max(0, head.y - PlayerInventory.MAGNET_RADIUS);
+        int maxY = Math.min(
+                game.getHeight() - 1,
+                head.y + PlayerInventory.MAGNET_RADIUS
+        );
+        double cellSize = currentCellSize();
+        double x = minX * cellSize;
+        double y = minY * cellSize;
+        double width = (maxX - minX + 1) * cellSize;
+        double height = (maxY - minY + 1) * cellSize;
+        double lineWidth = Math.max(1.0, 1.5 * fullScale);
+
+        gc.setFill(Color.rgb(255, 215, 0, 0.20));
+        gc.fillRect(x, y, width, height);
+        gc.setStroke(Color.GOLD);
+        gc.setLineWidth(lineWidth);
+        gc.strokeRect(
+                x + lineWidth / 2,
+                y + lineWidth / 2,
+                Math.max(0, width - lineWidth),
+                Math.max(0, height - lineWidth)
+        );
+    }
+
+    // Draws a cyan ring around the protected head cell.
+    // Keeps the ring inside its cell at every scale.
+    private void drawShieldHalo(Snake snake) {
+        Point head = snake.getHead();
+        double cellSize = currentCellSize();
+        double inset = Math.max(1.5, cellSize * 0.08);
+        double diameter = Math.max(1.0, cellSize - inset * 2);
+
+        gc.setStroke(Color.CYAN);
+        gc.setLineWidth(Math.max(1.5, 2.0 * fullScale));
+        gc.strokeOval(
+                head.x * cellSize + inset,
+                head.y * cellSize + inset,
+                diameter,
+                diameter
+        );
+    }
+
+    // Draws a visible live magnet countdown at the top right.
+    // Positions it below the two-line top HUD.
+    private void drawMagnetTimer() {
+        if (!game.getInventory().isMagnetActive()) {
+            return;
+        }
+
+        double cellSize = currentCellSize();
+        double bannerWidth = Math.min(
+                gridCanvas.getWidth() - cellSize * 2,
+                9 * cellSize
+        );
+        double bannerHeight = Math.max(cellSize, 18 * fullScale);
+        double x = gridCanvas.getWidth() - bannerWidth - cellSize * 0.35;
+        double y = cellSize * 2.35;
+        String text = String.format(
+                Locale.ROOT,
+                "MAGNET %.1fs",
+                game.getInventory().getMagnetTimeRemaining()
+        );
+
+        gc.setFill(Color.rgb(255, 215, 0, 0.94));
+        gc.fillRoundRect(
+                x,
+                y,
+                bannerWidth,
+                bannerHeight,
+                cellSize * 0.35,
+                cellSize * 0.35
+        );
+        gc.setStroke(Color.rgb(154, 107, 0));
+        gc.setLineWidth(Math.max(1.0, fullScale));
+        gc.strokeRoundRect(
+                x,
+                y,
+                bannerWidth,
+                bannerHeight,
+                cellSize * 0.35,
+                cellSize * 0.35
+        );
+        gc.setFill(Color.rgb(30, 24, 0));
+        gc.setFont(Font.font(
+                "Arial",
+                FontWeight.BOLD,
+                Math.max(8.0, 12.0 * fullScale)
+        ));
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.fillText(
+                text,
+                x + cellSize * 0.35,
+                y + bannerHeight * 0.70
+        );
     }
 
     // Draws the active coin when it has a valid position.
@@ -481,21 +607,46 @@ public class GameView {
         }
     }
 
-    // Refresh score text from model data.
-    // Include the active speed tier.
+    // Refresh every HUD value from model data.
+    // Include tier, points, and power-up availability.
     public void updateScoreLabel() {
         scoreLabel.setText(formatScoreText(game.getScorePoints()));
     }
 
-    // Format the score and active tier together.
-    // Keep one decimal place for every multiplier.
+    // Formats the compact two-line game HUD.
+    // Shows live magnet time while the power is active.
     private String formatScoreText(int scorePoints) {
+        PlayerInventory inventory = game.getInventory();
+        String magnetStatus = inventory.isMagnetActive()
+                ? String.format(
+                        Locale.ROOT,
+                        "%.1fs",
+                        inventory.getMagnetTimeRemaining()
+                )
+                : PowerUpType.MAGNET.getCost() + "pt";
+        // Hide the revive option after its single use.
+        // Keep it visible while held or still purchasable.
+        String reviveOption = "";
+        if (!inventory.hasUsedReviveStone()) {
+            String reviveStatus = inventory.hasReviveStone()
+                    ? "ON"
+                    : PowerUpType.REVIVE_STONE.getCost() + "pt";
+            reviveOption = "  [3]Revive: " + reviveStatus;
+        }
+
         return String.format(
                 Locale.ROOT,
-                "Score: %d | %s (%.1fx)",
+                "Score: %d | %s (%.1fx) | Pts: %d\n"
+                        + "[1]Shield: %d/%d  "
+                        + "[2]Magnet: %s%s",
                 scorePoints,
                 game.getSpeedTier().getDisplayName(),
-                game.getSpeedTier().getScoreMultiplier()
+                game.getSpeedTier().getScoreMultiplier(),
+                inventory.getShopPoints(),
+                inventory.getShieldCharges(),
+                PlayerInventory.MAX_SHIELD_PURCHASES,
+                magnetStatus,
+                reviveOption
         );
     }
 

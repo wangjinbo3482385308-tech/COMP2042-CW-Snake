@@ -3,9 +3,11 @@ package com.comp2042.model;
 // Defines the available speed tiers.
 // Each tier owns its movement and scoring values.
 public enum SpeedTier {
+    // Keeps every tier behind closed walls.
+    // Blue coins grant temporary border passing.
     SLOW("Slow", 6.0, 1.0, false),
-    NORMAL("Normal", 8.5, 1.5, true),
-    FAST("Fast", 12.0, 2.0, true);
+    NORMAL("Normal", 8.5, 1.5, false),
+    FAST("Fast", 12.0, 2.0, false);
 
     private final String displayName;
     private final double baseSpeed;

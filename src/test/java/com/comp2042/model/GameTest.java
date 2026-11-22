@@ -25,15 +25,15 @@ class GameTest {
     }
 
     // Builds an easy-difficulty game.
-    // Expects speed and free borders.
+    // Expects legacy speed and closed borders.
     @Test
-    @DisplayName("Easy difficulty enables border passing")
+    @DisplayName("Easy difficulty keeps default walls closed")
     void easyDifficultyUsesExpectedSettings() {
         Game easyGame = new Game(20, 20, false, 'E');
 
         assertEquals(8.5, easyGame.getSpeed());
         assertEquals(8.5, easyGame.getCurrentSpeed());
-        assertTrue(easyGame.isNoBorder());
+        assertFalse(easyGame.isNoBorder());
         assertEquals(GameState.READY, easyGame.getState());
     }
 

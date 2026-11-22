@@ -14,6 +14,9 @@ public class PlayerInventory {
     private int shieldPurchases;
     private double magnetTimeRemaining;
     private boolean hasReviveStone;
+    // Enforces one revive per run.
+    // This state persists after consumption.
+    private boolean reviveStoneUsed;
 
     // Adds positive shop currency only.
     // Leaves all other point totals unchanged.
@@ -90,9 +93,10 @@ public class PlayerInventory {
     }
 
     // Buys the single-use revive stone.
+    // Blocks another purchase after it is used.
     public boolean buyReviveStone() {
         int cost = PowerUpType.REVIVE_STONE.getCost();
-        if (shopPoints < cost || hasReviveStone) {
+        if (shopPoints < cost || hasReviveStone || reviveStoneUsed) {
             return false;
         }
 
@@ -102,22 +106,26 @@ public class PlayerInventory {
     }
 
     // Uses the revive stone when one is held.
+    // Marks the revive option as spent.
     public boolean consumeReviveStone() {
         if (!hasReviveStone) {
             return false;
         }
 
         hasReviveStone = false;
+        reviveStoneUsed = true;
         return true;
     }
 
     // Restores the inventory after a game reset.
+    // Re-arms one revive for the next run.
     public void reset() {
         shopPoints = 0;
         shieldCharges = 0;
         shieldPurchases = 0;
         magnetTimeRemaining = 0.0;
         hasReviveStone = false;
+        reviveStoneUsed = false;
     }
 
     public int getShopPoints() {
@@ -138,5 +146,11 @@ public class PlayerInventory {
 
     public boolean hasReviveStone() {
         return hasReviveStone;
+    }
+
+    // Reports whether this run has spent its revive.
+    // The HUD uses this state to hide the option.
+    public boolean hasUsedReviveStone() {
+        return reviveStoneUsed;
     }
 }

@@ -74,6 +74,23 @@ class SnakeTest {
         assertEquals(1, movingSnake.getBody().size());
     }
 
+    // Places food inside the active five-by-five area.
+    // Expects the same growth as direct collection.
+    @Test
+    @DisplayName("Magnet collection grows the snake from range")
+    void magnetCollectionRetainsTheNewBodySegment() {
+        Snake growingSnake = newSnake(false, obstacle);
+        PlayerInventory inventory = new PlayerInventory();
+        inventory.addShopPoints(PowerUpType.MAGNET.getCost());
+        assertTrue(inventory.buyMagnet());
+        Coin food = fixedCoin(new Point(12, 10), growingSnake, obstacle);
+
+        growingSnake.move('R');
+
+        assertTrue(growingSnake.collectCoin(food, inventory));
+        assertEquals(2, growingSnake.getBody().size());
+    }
+
     // Moves the head onto the left board edge.
     // Expects the next move to cause death.
     @Test
