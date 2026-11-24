@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-// Renders the board and owns all JavaFX view nodes.
-// Exposes behavior instead of mutable layout fields.
+/**
+ * Renders the game board, active power-up visuals, portals, and HUD overlays on JavaFX nodes.
+ */
 public class GameView {
     private final Game game;
     private final Canvas gridCanvas;
@@ -55,7 +56,11 @@ public class GameView {
     private boolean fullsize;
     private double fullScale;
 
-    // Builds a reusable scene with private controls.
+    /**
+     * Creates a game view sized and styled for the supplied game model.
+     *
+     * @param game active game model providing board dimensions and HUD state
+     */
     public GameView(Game game) {
         this.game = game;
         initialWidth = game.getWidth() * game.getMultiplier();
@@ -101,14 +106,22 @@ public class GameView {
         scoreLabel.getStylesheets().add(stylesheet);
     }
 
-    // Draws the initial board for a scene.
-    // Draws the initial board state.
+    /**
+     * Draws the initial board state for a newly assembled scene.
+     *
+     * @param snake active snake
+     * @param coin initial coin
+     * @param obstacle board obstacle manager
+     */
     public void makeScene(Snake snake, Coin coin, Obstacle obstacle) {
         drawGrid(coin, snake, obstacle);
     }
 
-    // Adds all view nodes to the supplied game pane.
-    // Keeps sizing and alignment inside the view layer.
+    /**
+     * Attaches and aligns the board canvas and overlay labels inside the supplied container pane.
+     *
+     * @param gamePane root pane hosting the game scene
+     */
     public void layoutGamePane(StackPane gamePane) {
         gamePane.getChildren().addAll(
                 gridCanvas,
@@ -128,7 +141,15 @@ public class GameView {
         StackPane.setMargin(scoreLabel, new Insets(2, 2, 0, 2));
     }
 
-    // Toggles fullscreen scaling and redraws the board.
+    /**
+     * Switches fullscreen mode, recalculates canvas and font scaling, and redraws the board.
+     *
+     * @param fullScreen {@code true} to enter fullscreen; {@code false} to restore windowed size
+     * @param stage window hosting the game scene
+     * @param obstacle board obstacle manager
+     * @param snake active snake
+     * @param coin active coin
+     */
     public void scaleToFullscreen(
             boolean fullScreen,
             Stage stage,
@@ -181,7 +202,11 @@ public class GameView {
         }
     }
 
-    // Updates every font consistently for the current mode.
+    /**
+     * Scales overlay and HUD label font sizes to match windowed or fullscreen mode.
+     *
+     * @param isFullscreen {@code true} when rendering in fullscreen mode
+     */
     public void updateFullscreenFontSizes(boolean isFullscreen) {
         double scale = isFullscreen ? fullScale : 1;
 
@@ -200,7 +225,13 @@ public class GameView {
         );
     }
 
-    // Renders one complete board frame.
+    /**
+     * Renders a full board frame including magnet area, portals, coin, snake, shield halo, obstacles, and timer.
+     *
+     * @param coin active coin on the board
+     * @param snake active snake
+     * @param obstacle board obstacle manager
+     */
     public void drawGrid(Coin coin, Snake snake, Obstacle obstacle) {
         gc.setFill(AssetManager.BACKGROUND_COLOR);
         gc.fillRect(0, 0, gridCanvas.getWidth(), gridCanvas.getHeight());
@@ -765,7 +796,9 @@ public class GameView {
         return previous == expectedPrevious && current == expectedCurrent;
     }
 
-    // Clears all turn markers for a new run.
+    /**
+     * Clears all stored body corner-turn markers for a new run or revival.
+     */
     public void resetTurns() {
         for (int x = 0; x < turnArray.length; x++) {
             for (int y = 0; y < turnArray[x].length; y++) {
@@ -774,7 +807,11 @@ public class GameView {
         }
     }
 
-    // Synchronizes the game-over overlay.
+    /**
+     * Updates visibility of the game-over overlay based on the snake's alive state.
+     *
+     * @param snake active snake
+     */
     public void gameOver(Snake snake) {
         if (snake.getDead() && !gameOverVisible) {
             gameOverVisible = true;
@@ -785,7 +822,9 @@ public class GameView {
         }
     }
 
-    // Synchronizes the victory overlay.
+    /**
+     * Updates visibility of the victory overlay based on the game's win state.
+     */
     public void gameWon() {
         if (game.gameWon() && !gameWonVisible) {
             gameWonVisible = true;
@@ -796,8 +835,9 @@ public class GameView {
         }
     }
 
-    // Refresh every HUD value from model data.
-    // Include tier, points, and power-up availability.
+    /**
+     * Refreshes the two-line HUD label with current score, speed tier, shop stock, and portal status.
+     */
     public void updateScoreLabel() {
         scoreLabel.setText(formatScoreText(game.getScorePoints()));
     }
@@ -851,26 +891,56 @@ public class GameView {
         );
     }
 
+    /**
+     * Reports whether the canvas is currently scaled to fullscreen size.
+     *
+     * @return {@code true} if fullscreen scaling is active
+     */
     public boolean isFullsize() {
         return fullsize;
     }
 
+    /**
+     * Returns the canvas used to render the game board.
+     *
+     * @return board {@link Canvas}
+     */
     public Canvas getGridCanvas() {
         return gridCanvas;
     }
 
+    /**
+     * Returns the 2D graphics context bound to the board canvas.
+     *
+     * @return board {@link GraphicsContext}
+     */
     public GraphicsContext getGraphicsContext() {
         return gc;
     }
 
+    /**
+     * Returns the game-over overlay label.
+     *
+     * @return game-over {@link Label}
+     */
     public Label getGameOverLabel() {
         return gameOverLabel;
     }
 
+    /**
+     * Returns the victory overlay label.
+     *
+     * @return victory {@link Label}
+     */
     public Label getGameWonLabel() {
         return gameWonLabel;
     }
 
+    /**
+     * Returns the top HUD label showing score, speed tier, and shop status.
+     *
+     * @return HUD {@link Label}
+     */
     public Label getScoreLabel() {
         return scoreLabel;
     }

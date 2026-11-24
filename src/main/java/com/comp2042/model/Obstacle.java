@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-// Owns obstacle positions and generation.
-// Rendering colors are provided by the view layer.
+/**
+ * Manages obstacle positions, generation, and clearing on the game board.
+ */
 public class Obstacle {
     private static final int MAX_OBSTACLES = 50;
 
@@ -15,6 +16,12 @@ public class Obstacle {
     private final List<Point> obstacles;
     private final Random random;
 
+    /**
+     * Creates an empty obstacle manager for a board of the given dimensions.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     */
     public Obstacle(int x, int y) {
         width = x;
         height = y;
@@ -22,8 +29,14 @@ public class Obstacle {
         random = new Random();
     }
 
-    // Adds only free obstacle cells.
-    // Bounds every search to avoid an infinite loop.
+    /**
+     * Spawns up to the requested number of obstacles on unoccupied cells.
+     * Bounds search attempts per obstacle and stops at the board obstacle cap.
+     *
+     * @param snake active snake occupying board cells
+     * @param coin active coin occupying a board cell
+     * @param amount maximum number of new obstacles to place
+     */
     public void newObstacles(Snake snake, Coin coin, int amount) {
         int maxAttempts = Math.max(1, width * height * 4);
 
@@ -59,12 +72,21 @@ public class Obstacle {
                 && !coin.getPos().equals(point);
     }
 
+    /**
+     * Returns a copy of all active obstacle coordinates.
+     *
+     * @return list of obstacle cell positions
+     */
     public List<Point> getObstacles() {
         return new ArrayList<>(obstacles);
     }
 
-    // Removes every obstacle at one cell.
-    // Reports whether the board changed.
+    /**
+     * Removes any obstacle occupying the specified grid cell.
+     *
+     * @param point target cell coordinate
+     * @return {@code true} if at least one obstacle was removed
+     */
     public boolean removeObstacleAt(Point point) {
         if (point == null) {
             return false;
@@ -73,8 +95,12 @@ public class Obstacle {
         return obstacles.removeIf(point::equals);
     }
 
-    // Clears a square area around one center.
-    // Includes cells exactly on the radius.
+    /**
+     * Removes all obstacles within an inclusive square radius around a center cell.
+     *
+     * @param center center grid cell
+     * @param radius Chebyshev distance in cells to clear
+     */
     public void clearAreaAround(Point center, int radius) {
         if (center == null || radius < 0) {
             return;
@@ -84,7 +110,9 @@ public class Obstacle {
                 && Math.abs(point.y - center.y) <= radius);
     }
 
-    // Clears all obstacle cells for a new run.
+    /**
+     * Clears all obstacles for a new game run.
+     */
     public void reset() {
         obstacles.clear();
     }

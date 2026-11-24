@@ -11,6 +11,11 @@ public final class Launcher {
     private Launcher() {
     }
 
+    /**
+     * Launches the application by forwarding arguments to {@link Main#main(String[])}.
+     *
+     * @param args command-line arguments passed to the JavaFX runtime
+     */
     public static void main(String[] args) {
         Main.main(args);
     }

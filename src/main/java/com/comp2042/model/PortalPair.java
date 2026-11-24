@@ -5,12 +5,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-// Owns portal spawning and traversal state.
-// Keeps this feature independent from JavaFX.
+/**
+ * Manages paired portal spawning, head teleportation, and full-body traversal progress.
+ * Remains independent of JavaFX rendering.
+ */
 public class PortalPair {
+    /** Minimum score points required before portals can spawn. */
     public static final int SCORE_THRESHOLD = 100;
+    /** Cooldown delay in seconds between a completed warp and the next portal spawn. */
     public static final double SPAWN_INTERVAL_SECONDS = 10.0;
+    /** Flat bonus points awarded when the snake completes a portal traversal. */
     public static final int COMPLETION_BONUS = 10;
+    /** Preferred minimum Manhattan distance in grid cells between paired portals. */
     public static final int MIN_PORTAL_DISTANCE = 3;
 
     private final Random random = new Random();
@@ -22,9 +28,25 @@ public class PortalPair {
     private int remainingSegments;
     private double cooldownSeconds = 0.0;
 
-    // Advances portal spawning after the score threshold.
-    // Selects only free board cells.
-    // Prefers exits with a safe separation.
+    /**
+     * Creates an inactive portal pair with zero initial spawn cooldown.
+     */
+    public PortalPair() {
+    }
+
+    /**
+     * Advances the portal spawn cooldown and spawns a pair on free cells when eligible.
+     * Prefers cell pairs separated by at least {@link #MIN_PORTAL_DISTANCE}.
+     *
+     * @param currentScorePoints player's current score points
+     * @param deltaSeconds elapsed gameplay time in seconds
+     * @param width board width in grid cells
+     * @param height board height in grid cells
+     * @param snake active snake occupying board cells
+     * @param coin active coin occupying a board cell
+     * @param obstacle obstacle manager occupying board cells
+     * @return {@code true} if a new portal pair was spawned
+     */
     public boolean updateSpawnTimer(
             int currentScorePoints,
             double deltaSeconds,
@@ -71,8 +93,13 @@ public class PortalPair {
         return true;
     }
 
-    // Places portals at deterministic test coordinates.
-    // Rejects missing or identical coordinates.
+    /**
+     * Places the portal pair at explicit coordinates, typically for deterministic testing.
+     *
+     * @param a grid position of portal A
+     * @param b grid position of portal B
+     * @throws IllegalArgumentException if either coordinate is {@code null} or both are equal
+     */
     public void spawnAt(Point a, Point b) {
         if (a == null || b == null || a.equals(b)) {
             throw new IllegalArgumentException(
@@ -87,8 +114,16 @@ public class PortalPair {
         remainingSegments = 0;
     }
 
-    // Handles entry and tail progress after snake movement.
-    // Returns true only when traversal has completed.
+    /**
+     * Processes portal entry or ongoing tail traversal after the snake moves one cell.
+     * Awards {@link #COMPLETION_BONUS} and clears the pair once the tail finishes exiting.
+     *
+     * @param game active game model receiving completion rewards
+     * @param snake active snake that just moved
+     * @param obstacle obstacle manager checked at the teleport destination
+     * @param snakeGrew {@code true} if the snake grew on the current tick
+     * @return {@code true} if the snake completed portal traversal on this tick
+     */
     public boolean onSnakeMoved(
             Game game,
             Snake snake,
@@ -140,8 +175,9 @@ public class PortalPair {
         return false;
     }
 
-    // Clears all portal state for a fresh run.
-    // The first eligible score can spawn immediately.
+    /**
+     * Clears active portals, traversal progress, and spawn cooldown for a fresh run.
+     */
     public void reset() {
         portalA = null;
         portalB = null;
@@ -151,26 +187,56 @@ public class PortalPair {
         cooldownSeconds = 0.0;
     }
 
+    /**
+     * Reports whether a portal pair is currently active on the board.
+     *
+     * @return {@code true} if portals are active
+     */
     public boolean isActive() {
         return active;
     }
 
+    /**
+     * Reports whether the snake is currently traversing the active portal pair.
+     *
+     * @return {@code true} while body segments are still passing through
+     */
     public boolean isTraversing() {
         return traversing;
     }
 
+    /**
+     * Returns a defensive copy of portal A's coordinates.
+     *
+     * @return portal A position, or {@code null} when inactive
+     */
     public Point getPortalA() {
         return portalA == null ? null : new Point(portalA);
     }
 
+    /**
+     * Returns a defensive copy of portal B's coordinates.
+     *
+     * @return portal B position, or {@code null} when inactive
+     */
     public Point getPortalB() {
         return portalB == null ? null : new Point(portalB);
     }
 
+    /**
+     * Returns the number of body segments left to exit the portal.
+     *
+     * @return remaining body segments during traversal
+     */
     public int getRemainingSegments() {
         return remainingSegments;
     }
 
+    /**
+     * Returns the remaining spawn cooldown before the next portal pair can appear.
+     *
+     * @return remaining cooldown in seconds
+     */
     public double getCooldownSeconds() {
         return cooldownSeconds;
     }
