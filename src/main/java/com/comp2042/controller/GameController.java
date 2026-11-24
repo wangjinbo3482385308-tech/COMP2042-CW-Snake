@@ -16,12 +16,20 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.awt.Point;
 import java.util.HashSet;
 import java.util.Set;
 
 // Coordinates input, gameplay timing, and view updates.
 // Delegates coin effects to model polymorphism.
 public class GameController {
+    // Distinguishes alive, revived, and game-over death checks.
+    private enum DeathOutcome {
+        ALIVE,
+        REVIVED,
+        GAME_OVER
+    }
+
     private final Game game;
     private final GameView gameView;
     private final Obstacle obstacle;
@@ -90,9 +98,33 @@ public class GameController {
         );
         game.getInventory().tickMagnet(deltaSeconds);
 
-        moveSnake();
-        if (handleSnakeDeath()) {
+        Point previousHead = snek.getHead();
+        boolean turnedThisTick = keyPressed;
+        boolean moved = moveSnake();
+
+        // Short-circuit the tick after death or revival.
+        // Keep the timeline running when a revive stone triggers.
+        DeathOutcome moveDeath = handleSnakeDeath();
+        if (moveDeath != DeathOutcome.ALIVE) {
             return;
+        }
+
+        // Handle a shield-blocked self-collision rollback.
+        // Preserve direction, turns, body length, and portal progress.
+        if (!moved && !snek.getDead()) {
+            if (turnedThisTick) {
+                key = lastKey;
+            }
+            keyPressed = false;
+            gameView.updateScoreLabel();
+            renderFrame();
+            return;
+        }
+
+        // Record the corner turn only after movement succeeds.
+        // Prevent blocked directions from polluting the turn grid.
+        if (moved && turnedThisTick) {
+            gameView.turnDir(previousHead, lastKey, key);
         }
 
         // Collect by direct contact or active magnet range.
@@ -120,7 +152,8 @@ public class GameController {
                     obstacle,
                     snakeGrew
             );
-            if (handleSnakeDeath()) {
+            DeathOutcome portalDeath = handleSnakeDeath();
+            if (portalDeath != DeathOutcome.ALIVE) {
                 return;
             }
             if (portalCompleted) {
@@ -148,10 +181,10 @@ public class GameController {
 
     // Resolves snake death with optional revive stone use.
     // Resets portals on revival to avoid stuck traversal.
-    // Returns true when the game session must stop.
-    private boolean handleSnakeDeath() {
+    // Returns whether the snake stayed alive, revived, or ended the run.
+    private DeathOutcome handleSnakeDeath() {
         if (!snek.getDead()) {
-            return false;
+            return DeathOutcome.ALIVE;
         }
 
         // Spend a held revive stone before ending the run.
@@ -173,27 +206,31 @@ public class GameController {
             // Remove turn markers from the previous body.
             // Keep the revived snake visually clean.
             gameView.resetTurns();
-            return false;
+            gameView.updateScoreLabel();
+            renderFrame();
+            return DeathOutcome.REVIVED;
         }
 
         game.setState(GameState.GAME_OVER);
         renderFrame();
         animation.stop();
-        return true;
+        return DeathOutcome.GAME_OVER;
     }
 
     // Maps the current key to a model movement command.
     // Shield protection participates in every movement.
-    private void moveSnake() {
+    // Reports whether the snake advanced by one cell.
+    private boolean moveSnake() {
         if (key == KeyCode.LEFT) {
-            snek.move('L', game.getInventory());
+            return snek.move('L', game.getInventory());
         } else if (key == KeyCode.RIGHT) {
-            snek.move('R', game.getInventory());
+            return snek.move('R', game.getInventory());
         } else if (key == KeyCode.UP) {
-            snek.move('U', game.getInventory());
+            return snek.move('U', game.getInventory());
         } else if (key == KeyCode.DOWN) {
-            snek.move('D', game.getInventory());
+            return snek.move('D', game.getInventory());
         }
+        return false;
     }
 
     // Resets temporary powers before applying the new coin.
@@ -317,7 +354,6 @@ public class GameController {
         key = eventCode;
         keyPressed = true;
         game.setState(GameState.RUNNING);
-        gameView.turnDir(snek, lastKey, key);
         animation.play();
     }
 

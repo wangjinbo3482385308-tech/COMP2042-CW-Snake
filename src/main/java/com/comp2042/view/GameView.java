@@ -679,13 +679,33 @@ public class GameView {
         }
     }
 
-    // Records a visual turn marker for the head.
+    /**
+     * Records a visual turn marker at the snake head cell.
+     *
+     * @param snake active snake providing the head cell
+     * @param previousKey direction key before the turn
+     * @param currentKey direction key after the turn
+     */
     public void turnDir(
             Snake snake,
             KeyCode previousKey,
             KeyCode currentKey
     ) {
-        Point head = snake.getHead();
+        turnDir(snake.getHead(), previousKey, currentKey);
+    }
+
+    /**
+     * Records a visual turn marker at a specific board cell.
+     *
+     * @param position board cell where the turn occurred
+     * @param previousKey direction key before the turn
+     * @param currentKey direction key after the turn
+     */
+    public void turnDir(
+            Point position,
+            KeyCode previousKey,
+            KeyCode currentKey
+    ) {
         int turn = 0;
         if (isTurn(previousKey, currentKey, KeyCode.LEFT, KeyCode.UP)
                 || isTurn(
@@ -732,7 +752,7 @@ public class GameView {
         )) {
             turn = 4;
         }
-        setTurn(head, turn);
+        setTurn(position, turn);
     }
 
     // Tests a directional turn pair.

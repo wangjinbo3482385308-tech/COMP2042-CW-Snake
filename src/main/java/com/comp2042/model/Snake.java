@@ -31,16 +31,28 @@ public class Snake {
         snakeDir = 270;
     }
 
-    // Moves the head in one grid direction.
-    // Applies border, obstacle, and self collisions.
-    public void move(char direction) {
-        move(direction, null);
+    /**
+     * Moves the head by one grid cell without shield protection.
+     * Applies border, obstacle, and self collision rules.
+     *
+     * @param direction movement code ({@code U}, {@code D}, {@code L}, or {@code R})
+     * @return {@code true} when the snake advances by one cell
+     */
+    public boolean move(char direction) {
+        return move(direction, null);
     }
 
-    // Moves with optional shield protection.
-    // Keeps the legacy movement contract intact.
-    public void move(char direction, PlayerInventory inventory) {
+    /**
+     * Moves the head by one grid cell with optional shield protection.
+     * Rolls back head, direction, and body when a shield blocks self-collision.
+     *
+     * @param direction movement code ({@code U}, {@code D}, {@code L}, or {@code R})
+     * @param inventory active player inventory, or {@code null} when unused
+     * @return {@code true} when the snake advances by one cell; {@code false} on death or shield rollback
+     */
+    public boolean move(char direction, PlayerInventory inventory) {
         Point previousHead = new Point(head);
+        int previousDir = snakeDir;
         selfCollision = false;
         body.add(new Point(head));
 
@@ -50,6 +62,8 @@ public class Snake {
             case 'L' -> moveHead(-1, 0, 270, inventory);
             case 'R' -> moveHead(1, 0, 90, inventory);
             default -> {
+                body.remove(body.size() - 1);
+                return false;
             }
         }
 
@@ -57,13 +71,15 @@ public class Snake {
         // Restore the pending segment to keep the death frame stable.
         if (dead) {
             body.remove(body.size() - 1);
-            return;
+            return false;
         }
 
         if (hitSelf() && !body.get(0).equals(head)) {
             if (inventory != null && inventory.consumeShield()) {
                 head.setLocation(previousHead);
+                snakeDir = previousDir;
                 body.remove(body.size() - 1);
+                return false;
             } else {
                 selfCollision = true;
                 dead = true;
@@ -75,6 +91,8 @@ public class Snake {
         if (dead && !body.isEmpty()) {
             body.remove(body.size() - 1);
         }
+
+        return !dead;
     }
 
     // Teleports the head to an exact destination.
