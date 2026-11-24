@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -141,6 +142,30 @@ class PlayerInventoryTest {
         assertEquals(new Point(WIDTH / 2, HEIGHT / 2), unprotectedSnake.getHead());
     }
 
+    // Moves a shielded snake directly into its own body.
+    // Verifies full state rollback and single shield consumption.
+    @Test
+    @DisplayName("A shield blocks self-collision and rolls back movement")
+    void shieldBlocksSelfCollisionAndRollsBackState() {
+        growSnake(snake, 3);
+        inventory.addShopPoints(PowerUpType.SHIELD.getCost());
+        assertTrue(inventory.buyShield());
+
+        Point previousHead = snake.getHead();
+        int previousDir = snake.getSnakeDir();
+        int previousBodySize = snake.getBody().size();
+        assertEquals(4, previousBodySize);
+
+        boolean moved = snake.move('L', inventory);
+
+        assertFalse(moved);
+        assertFalse(snake.getDead());
+        assertEquals(previousHead, snake.getHead());
+        assertEquals(previousDir, snake.getSnakeDir());
+        assertEquals(previousBodySize, snake.getBody().size());
+        assertEquals(0, inventory.getShieldCharges());
+    }
+
     // Checks the five-by-five magnet boundary.
     // Runs the countdown to complete expiry.
     @Test
@@ -220,6 +245,77 @@ class PlayerInventoryTest {
         assertFalse(snake.hitSelf());
         assertEquals(List.of(new Point(8, 10), new Point(12, 10)),
                 obstacle.getObstacles());
+    }
+
+    // Revives short snakes with one or two body segments.
+    // Expects at least one segment and a clear three-by-three center.
+    @Test
+    @DisplayName("Revival keeps at least one body segment for short snakes")
+    void revivalPreservesMinimumBodyAndClearsCenterAreaForShortSnakes() {
+        assertShortSnakeRevival(0);
+        assertShortSnakeRevival(1);
+    }
+
+    // Runs one short-snake revival check after the requested growth.
+    // Verifies center respawn, minimum body size, and three-by-three clearing.
+    private void assertShortSnakeRevival(int growthSteps) {
+        Obstacle boardObstacle = new Obstacle(WIDTH, HEIGHT);
+        Snake shortSnake = new Snake(WIDTH, HEIGHT, false, boardObstacle);
+        for (int index = 0; index < growthSteps; index++) {
+            Point nextHead = new Point(
+                    shortSnake.getHead().x + 1,
+                    shortSnake.getHead().y
+            );
+            Coin food = new FixedCoin(
+                    WIDTH,
+                    HEIGHT,
+                    shortSnake,
+                    boardObstacle,
+                    nextHead
+            );
+            assertTrue(shortSnake.move('R'));
+            assertTrue(shortSnake.ateCoin(food));
+        }
+
+        assertEquals(growthSteps + 1, shortSnake.getBody().size());
+
+        Point fatalObstacle = new Point(
+                shortSnake.getHead().x,
+                shortSnake.getHead().y - 1
+        );
+        setObstacles(boardObstacle, List.of(fatalObstacle));
+        assertFalse(shortSnake.move('U'));
+        assertTrue(shortSnake.getDead());
+        assertEquals(growthSteps + 1, shortSnake.getBody().size());
+
+        Point center = new Point(WIDTH / 2, HEIGHT / 2);
+        List<Point> outsideObstacles = List.of(
+                new Point(center.x - 2, center.y),
+                new Point(center.x + 2, center.y)
+        );
+        List<Point> allObstacles = new ArrayList<>(outsideObstacles);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                allObstacles.add(new Point(center.x + dx, center.y + dy));
+            }
+        }
+        setObstacles(boardObstacle, allObstacles);
+
+        shortSnake.reviveAtCenter(WIDTH, HEIGHT, boardObstacle);
+
+        assertFalse(shortSnake.getDead());
+        assertEquals(center, shortSnake.getHead());
+        assertEquals(270, shortSnake.getSnakeDir());
+        assertTrue(shortSnake.getBody().size() >= 1);
+        assertEquals(List.of(new Point(center.x + 1, center.y)), shortSnake.getBody());
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                assertFalse(boardObstacle.getObstacles().contains(
+                        new Point(center.x + dx, center.y + dy)
+                ));
+            }
+        }
+        assertEquals(outsideObstacles, boardObstacle.getObstacles());
     }
 
     // Resets every inventory value.
