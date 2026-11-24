@@ -8,6 +8,7 @@ public class Game {
     private final double multiplier;
     private final boolean powerUp;
     private final PlayerInventory inventory = new PlayerInventory();
+    private final PortalPair portalPair = new PortalPair();
 
     private double speed;
     private boolean noBorder;
@@ -99,6 +100,7 @@ public class Game {
         scorePoints = 0;
         maxScore = width * height - 2;
         state = GameState.READY;
+        portalPair.reset();
         inventory.reset();
     }
 
@@ -110,6 +112,16 @@ public class Game {
         );
         scorePoints += gainedPoints;
         inventory.addShopPoints(gainedPoints);
+    }
+
+    // Adds a fixed portal completion reward.
+    // Ignores speed multipliers.
+    // Mirrors the reward into shop points.
+    public void addBonusPoints(int bonus) {
+        if (bonus > 0) {
+            scorePoints += bonus;
+            inventory.addShopPoints(bonus);
+        }
     }
 
     // Preserves legacy coin scoring.
@@ -162,6 +174,10 @@ public class Game {
 
     public PlayerInventory getInventory() {
         return inventory;
+    }
+
+    public PortalPair getPortalPair() {
+        return portalPair;
     }
 
     public double getSpeed() {

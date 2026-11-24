@@ -77,6 +77,45 @@ public class Snake {
         }
     }
 
+    // Teleports the head to an exact destination.
+    // Applies obstacle and self collision rules.
+    // A shield absorbs a collision safely.
+    public void teleportHeadTo(
+            Point destination,
+            Obstacle obstacle,
+            PlayerInventory inventory
+    ) {
+        if (destination == null) {
+            throw new IllegalArgumentException(
+                    "Teleport destination must be non-null."
+            );
+        }
+
+        Point previousHead = new Point(head);
+        selfCollision = false;
+        head.setLocation(new Point(destination));
+
+        if (obstacle != null
+                && obstacle.getObstacles().contains(head)) {
+            if (inventory != null && inventory.consumeShield()) {
+                obstacle.removeObstacleAt(head);
+            } else {
+                head.setLocation(previousHead);
+                dead = true;
+                return;
+            }
+        }
+
+        if (hitSelf()) {
+            if (inventory != null && inventory.consumeShield()) {
+                head.setLocation(previousHead);
+            } else {
+                selfCollision = true;
+                dead = true;
+            }
+        }
+    }
+
     // Applies one movement vector and its border behavior.
     private void moveHead(
             int deltaX,
