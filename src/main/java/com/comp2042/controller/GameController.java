@@ -20,8 +20,10 @@ import java.awt.Point;
 import java.util.HashSet;
 import java.util.Set;
 
-// Coordinates input, gameplay timing, and view updates.
-// Delegates coin effects to model polymorphism.
+/**
+ * Coordinates keyboard input, gameplay ticks, and view updates for an active session.
+ * Delegates coin power-up behavior to model polymorphism.
+ */
 public class GameController {
     // Distinguishes alive, revived, and game-over death checks.
     private enum DeathOutcome {
@@ -47,7 +49,17 @@ public class GameController {
     private KeyCode lastKey;
     private boolean keyPressed;
 
-    // Wires all gameplay collaborators through explicit dependencies.
+    /**
+     * Creates a controller wired to the session's model, view, and stage collaborators.
+     *
+     * @param snek active snake instance
+     * @param coin initial coin on the board
+     * @param game session state and scoring model
+     * @param gameView canvas and HUD view for the session
+     * @param obstacle obstacle manager for the board
+     * @param stage window hosting the active game scene
+     * @param viewManager shared manager for switching between menu and game windows
+     */
     public GameController(
             Snake snek,
             Coin coin,
@@ -258,8 +270,12 @@ public class GameController {
                 || game.gameWon();
     }
 
-    // Routes keyboard commands to controller behavior.
-    // Filter automatic repeats for stateful shortcuts.
+    /**
+     * Routes keyboard press events to movement, shop, pause, reset, fullscreen, and exit actions.
+     * Ignores automatic key repeats for stateful and shop shortcuts.
+     *
+     * @param event key press event from the active game scene
+     */
     public void handle(KeyEvent event) {
         KeyCode eventCode = event.getCode();
 
@@ -333,8 +349,11 @@ public class GameController {
         }
     }
 
-    // Clears held shortcut keys.
-    // Re-arms shop and session shortcuts after release.
+    /**
+     * Clears a released shortcut key so its action can be triggered again.
+     *
+     * @param event key release event from the active game scene
+     */
     public void handleKeyReleased(KeyEvent event) {
         pressedKeys.remove(event.getCode());
     }

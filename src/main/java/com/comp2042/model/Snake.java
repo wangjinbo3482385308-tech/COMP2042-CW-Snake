@@ -4,8 +4,10 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
-// Owns snake movement and collision rules.
-// Contains no image or color state.
+/**
+ * Manages snake coordinates, movement, growth, teleportation, revival, and collision rules.
+ * Contains no rendering or JavaFX state.
+ */
 public class Snake {
     private final Point head;
     private final List<Point> body;
@@ -19,7 +21,14 @@ public class Snake {
     private final boolean noBorder;
     private int snakeDir;
 
-    // Creates a centered snake and its initial tail.
+    /**
+     * Creates a snake centered on the board facing left with one initial tail segment.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param noBorder {@code true} to wrap across board edges permanently
+     * @param obstacle obstacle manager checked during movement
+     */
     public Snake(int x, int y, boolean noBorder, Obstacle obstacle) {
         this.obstacle = obstacle;
         this.noBorder = noBorder;
@@ -95,9 +104,15 @@ public class Snake {
         return !dead;
     }
 
-    // Teleports the head to an exact destination.
-    // Applies obstacle and self collision rules.
-    // A shield absorbs a collision safely.
+    /**
+     * Teleports the snake head to an exact cell and resolves obstacle or self collisions.
+     * Consumes a shield charge to clear an obstacle or roll back a self collision when available.
+     *
+     * @param destination target grid cell for the head
+     * @param obstacle obstacle manager checked at the destination, or {@code null}
+     * @param inventory active player inventory for shield protection, or {@code null}
+     * @throws IllegalArgumentException if {@code destination} is {@code null}
+     */
     public void teleportHeadTo(
             Point destination,
             Obstacle obstacle,
@@ -204,7 +219,12 @@ public class Snake {
                 || head.getY() >= gridHeight;
     }
 
-    // Returns a body segment's straight orientation.
+    /**
+     * Returns the straight sprite rotation angle for the specified body segment index.
+     *
+     * @param bodyCount index into the body segment list
+     * @return {@code 270} for horizontal segments or {@code 0} for vertical segments
+     */
     public int getBodyDir(int bodyCount) {
         if (bodyCount == 0) {
             return 0;
@@ -214,7 +234,12 @@ public class Snake {
         return horizontal ? 270 : 0;
     }
 
-    // Removes the tail unless the head entered the coin cell.
+    /**
+     * Checks direct head-to-coin contact and removes the tail segment if the coin was not eaten.
+     *
+     * @param coin active coin on the board
+     * @return {@code true} if the head occupies the coin cell
+     */
     public boolean ateCoin(Coin coin) {
         boolean ate = head.equals(coin.getPos());
         if (!ate) {
@@ -223,9 +248,13 @@ public class Snake {
         return ate;
     }
 
-    // Handles direct contact or magnet-assisted collection.
-    // Keeps the pending segment for either collection path.
-    // Removes the tail only when the coin is out of reach.
+    /**
+     * Checks direct contact or active magnet range and removes the tail only when uncollected.
+     *
+     * @param coin active coin on the board
+     * @param inventory player inventory providing magnet range, or {@code null}
+     * @return {@code true} if the coin was collected and the snake grew
+     */
     public boolean collectCoin(Coin coin, PlayerInventory inventory) {
         Point coinPosition = coin.getPos();
         boolean directCollection = head.equals(coinPosition);
@@ -239,25 +268,49 @@ public class Snake {
         return true;
     }
 
-    // Reports whether the head overlaps the body.
+    /**
+     * Reports whether the snake head currently overlaps any body segment.
+     *
+     * @return {@code true} if the head collides with the body
+     */
     public boolean hitSelf() {
         return body.contains(head);
     }
 
+    /**
+     * Returns a shallow copy of the snake's body coordinates in tail-to-head order.
+     *
+     * @return list of body segment points
+     */
     public List<Point> getBody() {
         return new ArrayList<>(body);
     }
 
+    /**
+     * Returns a defensive copy of the snake head's grid position.
+     *
+     * @return current head coordinates
+     */
     public Point getHead() {
         return new Point(head);
     }
 
+    /**
+     * Reports whether the snake has died.
+     *
+     * @return {@code true} if the snake is dead
+     */
     public boolean getDead() {
         return dead;
     }
 
-    // Revives at the board center.
-    // Rebuilds half the body along the right side.
+    /**
+     * Revives the snake at the board center facing left, clears nearby obstacles, and halves its body length.
+     *
+     * @param width board width in grid cells
+     * @param height board height in grid cells
+     * @param obstacle obstacle manager whose cells around the center are cleared, or {@code null}
+     */
     public void reviveAtCenter(int width, int height, Obstacle obstacle) {
         int centerX = width / 2;
         int centerY = height / 2;
@@ -282,11 +335,20 @@ public class Snake {
         }
     }
 
-    // Enables or disables temporary border wrapping.
+    /**
+     * Enables or disables temporary border wrapping granted by a blue coin.
+     *
+     * @param ignore {@code true} to wrap across board borders temporarily
+     */
     public void ignoreBorders(boolean ignore) {
         ignoreBorders = ignore;
     }
 
+    /**
+     * Returns the current head heading angle in degrees ({@code 0}, {@code 90}, {@code 180}, or {@code 270}).
+     *
+     * @return head rotation angle in degrees
+     */
     public int getSnakeDir() {
         return snakeDir;
     }

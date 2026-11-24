@@ -1,11 +1,17 @@
 package com.comp2042.model;
 
-// Identifies coin behavior without exposing image resources.
-// The view maps each type to its own texture.
+/**
+ * Identifies logical coin variants without exposing image resources to the model layer.
+ */
 public enum CoinType {
+    /** Standard red coin awarding base points. */
     RED,
+    /** High-value gold coin awarding bonus points. */
     GOLD,
+    /** Silver coin that spawns additional board obstacles. */
     SILVER,
+    /** Blue coin granting temporary border wrapping. */
     BLUE,
+    /** Rainbow coin granting a temporary movement speed boost. */
     RAINBOW
 }
