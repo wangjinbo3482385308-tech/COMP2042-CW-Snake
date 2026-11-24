@@ -91,34 +91,14 @@ public class GameController {
         game.getInventory().tickMagnet(deltaSeconds);
 
         moveSnake();
-        if (snek.getDead()) {
-            // Spend a held revive stone before ending the run.
-            // Restore the snake at the safe board center.
-            if (game.getInventory().consumeReviveStone()) {
-                snek.reviveAtCenter(
-                        game.getWidth(),
-                        game.getHeight(),
-                        obstacle
-                );
-                // Resume with the default leftward direction.
-                // Clear the held direction state as well.
-                key = KeyCode.LEFT;
-                lastKey = KeyCode.LEFT;
-                keyPressed = false;
-                // Remove turn markers from the previous body.
-                // Keep the revived snake visually clean.
-                gameView.resetTurns();
-            } else {
-                game.setState(GameState.GAME_OVER);
-                renderFrame();
-                animation.stop();
-                return;
-            }
+        if (handleSnakeDeath()) {
+            return;
         }
 
         // Collect by direct contact or active magnet range.
-        // Both paths share scoring and growth behavior.
-        if (snek.collectCoin(coin, game.getInventory())) {
+        // Record whether the snake grew on this tick.
+        boolean snakeGrew = snek.collectCoin(coin, game.getInventory());
+        if (snakeGrew) {
             powerCoin();
             game.incScore();
 
@@ -131,8 +111,75 @@ public class GameController {
             coin = coinFactory.createCoin(game, snek, obstacle);
         }
 
+        // Process portal entry and tail traversal.
+        // Refresh the HUD immediately on a completion bonus.
+        if (!snek.getDead() && !game.gameWon()) {
+            boolean portalCompleted = game.getPortalPair().onSnakeMoved(
+                    game,
+                    snek,
+                    obstacle,
+                    snakeGrew
+            );
+            if (handleSnakeDeath()) {
+                return;
+            }
+            if (portalCompleted) {
+                gameView.updateScoreLabel();
+            }
+        }
+
+        // Advance the portal spawn cooldown during active play.
+        // Spawn a new pair once score and timer allow.
+        if (!snek.getDead() && !game.gameWon()) {
+            game.getPortalPair().updateSpawnTimer(
+                    game.getScorePoints(),
+                    deltaSeconds,
+                    game.getWidth(),
+                    game.getHeight(),
+                    snek,
+                    coin,
+                    obstacle
+            );
+        }
+
         keyPressed = false;
         renderFrame();
+    }
+
+    // Resolves snake death with optional revive stone use.
+    // Resets portals on revival to avoid stuck traversal.
+    // Returns true when the game session must stop.
+    private boolean handleSnakeDeath() {
+        if (!snek.getDead()) {
+            return false;
+        }
+
+        // Spend a held revive stone before ending the run.
+        // Restore the snake at the safe board center.
+        if (game.getInventory().consumeReviveStone()) {
+            snek.reviveAtCenter(
+                    game.getWidth(),
+                    game.getHeight(),
+                    obstacle
+            );
+            // Clear active portal state after revival.
+            // Prevent a mid-warp death from locking portals.
+            game.getPortalPair().reset();
+            // Resume with the default leftward direction.
+            // Clear the held direction state as well.
+            key = KeyCode.LEFT;
+            lastKey = KeyCode.LEFT;
+            keyPressed = false;
+            // Remove turn markers from the previous body.
+            // Keep the revived snake visually clean.
+            gameView.resetTurns();
+            return false;
+        }
+
+        game.setState(GameState.GAME_OVER);
+        renderFrame();
+        animation.stop();
+        return true;
     }
 
     // Maps the current key to a model movement command.

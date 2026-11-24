@@ -4,6 +4,7 @@ import com.comp2042.model.Coin;
 import com.comp2042.model.Game;
 import com.comp2042.model.Obstacle;
 import com.comp2042.model.PlayerInventory;
+import com.comp2042.model.PortalPair;
 import com.comp2042.model.PowerUpType;
 import com.comp2042.model.Snake;
 import javafx.geometry.Insets;
@@ -210,6 +211,12 @@ public class GameView {
             drawMagnetRange(snake);
         }
 
+        // Draw paired portals below the snake.
+        // Use vector rings instead of external assets.
+        if (game.getPortalPair().isActive()) {
+            drawPortals();
+        }
+
         // Hide the consumed final coin.
         // Keep the victory frame clean.
         if (!game.gameWon()) {
@@ -262,6 +269,91 @@ public class GameView {
                 y + lineWidth / 2,
                 Math.max(0, width - lineWidth),
                 Math.max(0, height - lineWidth)
+        );
+    }
+
+    // Draws the active portal pair as vector rings.
+    // Blue marks portal A and orange marks portal B.
+    private void drawPortals() {
+        PortalPair portalPair = game.getPortalPair();
+        Point portalA = portalPair.getPortalA();
+        Point portalB = portalPair.getPortalB();
+        boolean traversing = portalPair.isTraversing();
+        double scale = fullsize ? fullScale : 1.0;
+        double cellSize = game.getMultiplier() * scale;
+
+        if (isInsideBoard(portalA)) {
+            drawPortalRing(
+                    portalA,
+                    Color.DEEPSKYBLUE,
+                    Color.LIGHTCYAN,
+                    Color.rgb(0, 191, 255, 0.25),
+                    traversing,
+                    scale,
+                    cellSize
+            );
+        }
+
+        if (isInsideBoard(portalB)) {
+            drawPortalRing(
+                    portalB,
+                    Color.DARKORANGE,
+                    Color.GOLD,
+                    Color.rgb(255, 140, 0, 0.25),
+                    traversing,
+                    scale,
+                    cellSize
+            );
+        }
+    }
+
+    // Draws concentric rings inside one portal cell.
+    // Adds a soft glow and thicker strokes during warp.
+    private void drawPortalRing(
+            Point cell,
+            Color outerColor,
+            Color innerColor,
+            Color glowColor,
+            boolean traversing,
+            double scale,
+            double cellSize
+    ) {
+        double x = cell.x * cellSize;
+        double y = cell.y * cellSize;
+
+        if (traversing) {
+            gc.setFill(glowColor);
+            gc.fillOval(x, y, cellSize, cellSize);
+        }
+
+        double outerStroke = Math.max(
+                1.5,
+                (traversing ? 2.8 : 2.0) * scale
+        );
+        double outerInset = Math.max(1.0, cellSize * 0.10);
+        double outerDiameter = Math.max(1.0, cellSize - outerInset * 2);
+        gc.setStroke(outerColor);
+        gc.setLineWidth(outerStroke);
+        gc.strokeOval(
+                x + outerInset,
+                y + outerInset,
+                outerDiameter,
+                outerDiameter
+        );
+
+        double innerStroke = Math.max(
+                1.2,
+                (traversing ? 2.2 : 1.5) * scale
+        );
+        double innerInset = Math.max(2.5, cellSize * 0.27);
+        double innerDiameter = Math.max(1.0, cellSize - innerInset * 2);
+        gc.setStroke(innerColor);
+        gc.setLineWidth(innerStroke);
+        gc.strokeOval(
+                x + innerInset,
+                y + innerInset,
+                innerDiameter,
+                innerDiameter
         );
     }
 
@@ -373,6 +465,7 @@ public class GameView {
     }
 
     // Selects a body image and draws one segment.
+    // Handles portal splits without twisted sprites.
     private void drawBody(
             Snake snake,
             List<Point> body,
@@ -380,17 +473,11 @@ public class GameView {
             int index
     ) {
         Image rotatedImage;
-        if (body.size() <= 1) {
+        if (index == 0) {
             rotatedImage = getRotatedImage(
                     AssetManager.getSnakeTail(),
                     tailRotationCache,
-                    snake.getSnakeDir()
-            );
-        } else if (index == 0) {
-            rotatedImage = getRotatedImage(
-                    AssetManager.getSnakeTail(),
-                    tailRotationCache,
-                    getTailRotation(body)
+                    getTailRotation(snake, body)
             );
         } else if (getTurn(point) != 0) {
             rotatedImage = getRotatedImage(
@@ -402,7 +489,7 @@ public class GameView {
             rotatedImage = getRotatedImage(
                     AssetManager.getSnakeBody(),
                     bodyRotationCache,
-                    snake.getBodyDir(index)
+                    getBodyRotation(snake, body, index)
             );
         }
 
@@ -420,35 +507,117 @@ public class GameView {
         }
     }
 
-    // Derive the tail direction.
-    // Support wrapped adjacent cells.
-    private int getTailRotation(List<Point> body) {
-        Point tail = body.get(0);
-        Point next = body.get(1);
-        int deltaX = next.x - tail.x;
-        int deltaY = next.y - tail.y;
+    // Derive the straight body orientation safely.
+    // Fall forward to the next segment across portal jumps.
+    private int getBodyRotation(
+            Snake snake,
+            List<Point> body,
+            int index
+    ) {
+        Point current = body.get(index);
+        Point previous = body.get(index - 1);
+        if (getAdjacentDirection(previous, current) >= 0) {
+            return snake.getBodyDir(index);
+        }
 
-        // Detect upward adjacency.
-        // Include the top wrapping edge.
-        if (deltaY == -1 || deltaY == game.getHeight() - 1) {
+        Point next = index + 1 < body.size()
+                ? body.get(index + 1)
+                : snake.getHead();
+        if (getAdjacentDirection(current, next) >= 0) {
+            return current.y == next.y ? 270 : 0;
+        }
+
+        int headDir = snake.getSnakeDir();
+        return (headDir == 90 || headDir == 270) ? 270 : 0;
+    }
+
+    // Derive the tail direction.
+    // Support wrapped cells and portal-split segments.
+    private int getTailRotation(Snake snake, List<Point> body) {
+        Point tail = body.get(0);
+        Point next = body.size() > 1 ? body.get(1) : snake.getHead();
+        int adjacentDirection = getAdjacentDirection(tail, next);
+        if (adjacentDirection >= 0) {
+            return adjacentDirection;
+        }
+
+        return getPortalFallbackRotation(tail, snake.getSnakeDir());
+    }
+
+    // Computes a cardinal angle between adjacent cells.
+    // Supports normal steps and board wrap-around edges.
+    // Returns -1 when the two points are not adjacent.
+    private int getAdjacentDirection(Point from, Point to) {
+        if (from == null || to == null) {
+            return -1;
+        }
+
+        int deltaX = to.x - from.x;
+        int deltaY = to.y - from.y;
+        int lastColumn = game.getWidth() - 1;
+        int lastRow = game.getHeight() - 1;
+
+        if (deltaX == 0 && (deltaY == -1 || deltaY == lastRow)) {
             return 0;
         }
-
-        // Detect downward adjacency.
-        // Include the bottom wrapping edge.
-        if (deltaY == 1 || deltaY == -(game.getHeight() - 1)) {
+        if (deltaX == 0 && (deltaY == 1 || deltaY == -lastRow)) {
             return 180;
         }
-
-        // Detect leftward adjacency.
-        // Include the left wrapping edge.
-        if (deltaX == -1 || deltaX == game.getWidth() - 1) {
+        if (deltaY == 0 && (deltaX == -1 || deltaX == lastColumn)) {
             return 270;
         }
+        if (deltaY == 0 && (deltaX == 1 || deltaX == -lastColumn)) {
+            return 90;
+        }
+        return -1;
+    }
 
-        // Handle the remaining right edge.
-        // Use the right-facing sprite.
-        return 90;
+    // Points a portal-split tail toward its entry portal.
+    // Falls back to the current heading on portal cells.
+    private int getPortalFallbackRotation(Point tail, int defaultDir) {
+        PortalPair portalPair = game.getPortalPair();
+        if (!portalPair.isActive()) {
+            return defaultDir;
+        }
+
+        Point portalA = portalPair.getPortalA();
+        Point portalB = portalPair.getPortalB();
+        Point nearest = selectNearestPortal(tail, portalA, portalB);
+        if (nearest == null || tail.equals(nearest)) {
+            return defaultDir;
+        }
+
+        int adjacentDirection = getAdjacentDirection(tail, nearest);
+        if (adjacentDirection >= 0) {
+            return adjacentDirection;
+        }
+
+        int deltaX = nearest.x - tail.x;
+        int deltaY = nearest.y - tail.y;
+        if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+            return deltaX > 0 ? 90 : 270;
+        }
+        return deltaY > 0 ? 180 : 0;
+    }
+
+    // Chooses the closer portal endpoint by grid distance.
+    private Point selectNearestPortal(
+            Point origin,
+            Point portalA,
+            Point portalB
+    ) {
+        if (portalA == null) {
+            return portalB;
+        }
+        if (portalB == null) {
+            return portalA;
+        }
+
+        int distA = Math.abs(portalA.x - origin.x)
+                + Math.abs(portalA.y - origin.y);
+        int distB = Math.abs(portalB.x - origin.x)
+                + Math.abs(portalB.y - origin.y);
+        return distA <= distB ? portalA : portalB;
     }
 
     // Draws every obstacle using the shared color.
@@ -634,11 +803,22 @@ public class GameView {
             reviveOption = "  [3]Revive: " + reviveStatus;
         }
 
+        // Show a compact portal state while active.
+        // Keep the second HUD row clean when inactive.
+        PortalPair portalPair = game.getPortalPair();
+        String portalOption = "";
+        if (portalPair.isActive()) {
+            String portalStatus = portalPair.isTraversing()
+                    ? "WARPING"
+                    : "READY";
+            portalOption = "  Portal: " + portalStatus;
+        }
+
         return String.format(
                 Locale.ROOT,
                 "Score: %d | %s (%.1fx) | Pts: %d\n"
                         + "[1]Shield: %d/%d  "
-                        + "[2]Magnet: %s%s",
+                        + "[2]Magnet: %s%s%s",
                 scorePoints,
                 game.getSpeedTier().getDisplayName(),
                 game.getSpeedTier().getScoreMultiplier(),
@@ -646,7 +826,8 @@ public class GameView {
                 inventory.getShieldCharges(),
                 PlayerInventory.MAX_SHIELD_PURCHASES,
                 magnetStatus,
-                reviveOption
+                reviveOption,
+                portalOption
         );
     }
 
