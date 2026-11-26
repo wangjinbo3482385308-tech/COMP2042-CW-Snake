@@ -259,6 +259,7 @@ public class GameController {
         gameView.drawGrid(coin, snek, obstacle);
         gameView.gameWon();
         gameView.gameOver(snek);
+        gameView.updatePaused();
         gameView.updateScoreLabel();
     }
 
@@ -395,8 +396,10 @@ public class GameController {
         if (game.getState() == GameState.RUNNING) {
             game.setState(GameState.PAUSED);
             animation.stop();
+            gameView.updatePaused();
         } else if (game.getState() == GameState.PAUSED) {
             game.setState(GameState.RUNNING);
+            gameView.updatePaused();
             animation.play();
         }
     }
