@@ -44,7 +44,7 @@ public class GameHudManager {
     /**
      * Creates and styles the HUD and overlay labels for the supplied game model.
      *
-     * @param game active game model providing scoring, speed tier, inventory, and portal state
+     * @param game active game model providing scoring, level map, speed tier, inventory, and portal state
      */
     public GameHudManager(Game game) {
         this.game = game;
@@ -123,7 +123,7 @@ public class GameHudManager {
         gameWonLabel.setStyle(overlayStyle);
         pausedLabel.setStyle(overlayStyle);
         scoreLabel.setStyle(
-                "-fx-font-size: " + 12 * scale + "px;"
+                "-fx-font-size: " + 11 * scale + "px;"
                         + " -fx-text-fill: #111111;"
                         + " -fx-padding: 2 6;"
         );
@@ -182,13 +182,13 @@ public class GameHudManager {
     }
 
     /**
-     * Refreshes the two-line HUD text with the current score, speed tier, shop stock, and portal status.
+     * Refreshes the two-line HUD text with the current score, level map, speed tier, shop stock, and portal status.
      */
     public void updateScoreLabel() {
         scoreLabel.setText(formatScoreText(game.getScorePoints()));
     }
 
-    // Formats the compact two-line HUD displaying score, shop state, and active powers.
+    // Formats the compact two-line HUD displaying score, level, speed tier, shop state, and active powers.
     private String formatScoreText(int scorePoints) {
         PlayerInventory inventory = game.getInventory();
         String magnetStatus = inventory.isMagnetActive()
@@ -217,10 +217,11 @@ public class GameHudManager {
 
         return String.format(
                 Locale.ROOT,
-                "Score: %d | %s (%.1fx) | Pts: %d\n"
+                "Score: %d | %s | %s %.1fx | Pts: %d\n"
                         + "[1]Shd: %d/%d  "
                         + "[2]Mag: %s%s%s",
                 scorePoints,
+                game.getLevelMap().getDisplayName(),
                 game.getSpeedTier().getDisplayName(),
                 game.getSpeedTier().getScoreMultiplier(),
                 inventory.getShopPoints(),

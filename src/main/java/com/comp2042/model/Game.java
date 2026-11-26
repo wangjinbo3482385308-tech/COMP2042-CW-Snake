@@ -20,10 +20,11 @@ public class Game {
     private GameState state;
     private double currentSpeed;
     private SpeedTier speedTier = SpeedTier.NORMAL;
+    private LevelMap levelMap = LevelMap.CLASSIC;
     private boolean scoreMultiplierEnabled;
 
     /**
-     * Builds a game configured with an explicit speed tier.
+     * Builds a game configured with an explicit speed tier and default {@link LevelMap#CLASSIC} layout.
      * Defaults to {@link SpeedTier#NORMAL} when {@code speedTier} is {@code null}.
      *
      * @param width board width in grid cells
@@ -32,11 +33,33 @@ public class Game {
      * @param powerUp {@code true} to enable special power-up coins
      */
     public Game(int width, int height, SpeedTier speedTier, boolean powerUp) {
+        this(width, height, speedTier, powerUp, LevelMap.CLASSIC);
+    }
+
+    /**
+     * Builds a game configured with an explicit speed tier and preset level map.
+     * Defaults to {@link SpeedTier#NORMAL} when {@code speedTier} is {@code null}
+     * and {@link LevelMap#CLASSIC} when {@code levelMap} is {@code null}.
+     *
+     * @param width board width in grid cells
+     * @param height board height in grid cells
+     * @param speedTier selected speed tier, or {@code null} for normal
+     * @param powerUp {@code true} to enable special power-up coins
+     * @param levelMap selected preset level map, or {@code null} for classic
+     */
+    public Game(
+            int width,
+            int height,
+            SpeedTier speedTier,
+            boolean powerUp,
+            LevelMap levelMap
+    ) {
         this.width = width;
         this.height = height;
         this.powerUp = powerUp;
+        this.levelMap = levelMap == null ? LevelMap.CLASSIC : levelMap;
         multiplier = height > 50 ? 10 : 20;
-        maxScore = width * height - 2;
+        maxScore = calculateInitialMaxScore();
         state = GameState.READY;
         applyTier(speedTier);
     }
@@ -123,15 +146,21 @@ public class Game {
     }
 
     /**
-     * Resets scores, state, portals, and inventory for a fresh run while preserving board settings.
+     * Resets scores, state, portals, and inventory for a fresh run while preserving board and level settings.
      */
     public void resetScore() {
         score = 0;
         scorePoints = 0;
-        maxScore = width * height - 2;
+        maxScore = calculateInitialMaxScore();
         state = GameState.READY;
         portalPair.reset();
         inventory.reset();
+    }
+
+    // Computes the win target after accounting for the initial snake and preset level obstacles.
+    private int calculateInitialMaxScore() {
+        int presetObstacles = levelMap.buildObstacles(width, height).size();
+        return Math.max(0, width * height - 2 - presetObstacles);
     }
 
     /**
@@ -284,6 +313,28 @@ public class Game {
      */
     public SpeedTier getSpeedTier() {
         return speedTier;
+    }
+
+    /**
+     * Returns the currently selected preset level map.
+     *
+     * @return active {@link LevelMap}
+     */
+    public LevelMap getLevelMap() {
+        return levelMap;
+    }
+
+    /**
+     * Sets the active preset level map and updates the win target when the run has not started.
+     * Defaults to {@link LevelMap#CLASSIC} when {@code levelMap} is {@code null}.
+     *
+     * @param levelMap target preset level map, or {@code null} for classic
+     */
+    public void setLevelMap(LevelMap levelMap) {
+        this.levelMap = levelMap == null ? LevelMap.CLASSIC : levelMap;
+        if (state == GameState.READY && score == 0) {
+            maxScore = calculateInitialMaxScore();
+        }
     }
 
     /**

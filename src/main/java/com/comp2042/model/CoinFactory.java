@@ -64,7 +64,7 @@ public class CoinFactory {
                     portalPair
             );
         }
-        if (roll == 4 && obstacle.getObstacles().isEmpty()) {
+        if (roll == 4 && !obstacle.hasDynamicObstacles()) {
             return new SilverCoin(
                     game.getWidth(),
                     game.getHeight(),
