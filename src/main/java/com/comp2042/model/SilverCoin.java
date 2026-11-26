@@ -16,7 +16,26 @@ public class SilverCoin extends Coin {
      * @param obstacle obstacle manager occupying board cells
      */
     public SilverCoin(int x, int y, Snake snake, Obstacle obstacle) {
-        super(x, y, snake, obstacle, CoinType.SILVER);
+        this(x, y, snake, obstacle, null);
+    }
+
+    /**
+     * Spawns a silver coin on an unoccupied board cell while avoiding active portals.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param snake active snake occupying board cells
+     * @param obstacle obstacle manager occupying board cells
+     * @param portalPair active portal pair to avoid, or {@code null} when unused
+     */
+    public SilverCoin(
+            int x,
+            int y,
+            Snake snake,
+            Obstacle obstacle,
+            PortalPair portalPair
+    ) {
+        super(x, y, snake, obstacle, CoinType.SILVER, portalPair);
     }
 
     /**
@@ -34,7 +53,7 @@ public class SilverCoin extends Coin {
         int amount = new Random().nextInt(maxRange) + 3;
         int previousCount = obstacle.getObstacles().size();
 
-        obstacle.newObstacles(snake, this, amount);
+        obstacle.newObstacles(snake, this, amount, game.getPortalPair());
         int addedCount = obstacle.getObstacles().size() - previousCount;
         game.decMaxScore(addedCount);
     }

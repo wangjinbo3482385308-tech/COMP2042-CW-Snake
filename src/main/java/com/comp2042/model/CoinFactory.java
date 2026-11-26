@@ -25,12 +25,14 @@ public class CoinFactory {
      * @return newly spawned {@link Coin} instance
      */
     public Coin createCoin(Game game, Snake snake, Obstacle obstacle) {
+        PortalPair portalPair = game.getPortalPair();
         if (!game.isPowerUp()) {
             return new Coin(
                     game.getWidth(),
                     game.getHeight(),
                     snake,
-                    obstacle
+                    obstacle,
+                    portalPair
             );
         }
 
@@ -40,7 +42,8 @@ public class CoinFactory {
                     game.getWidth(),
                     game.getHeight(),
                     snake,
-                    obstacle
+                    obstacle,
+                    portalPair
             );
         }
         if (roll == 2) {
@@ -48,7 +51,8 @@ public class CoinFactory {
                     game.getWidth(),
                     game.getHeight(),
                     snake,
-                    obstacle
+                    obstacle,
+                    portalPair
             );
         }
         if (roll == 3) {
@@ -56,7 +60,8 @@ public class CoinFactory {
                     game.getWidth(),
                     game.getHeight(),
                     snake,
-                    obstacle
+                    obstacle,
+                    portalPair
             );
         }
         if (roll == 4 && obstacle.getObstacles().isEmpty()) {
@@ -64,14 +69,16 @@ public class CoinFactory {
                     game.getWidth(),
                     game.getHeight(),
                     snake,
-                    obstacle
+                    obstacle,
+                    portalPair
             );
         }
         return new Coin(
                 game.getWidth(),
                 game.getHeight(),
                 snake,
-                obstacle
+                obstacle,
+                portalPair
         );
     }
 }

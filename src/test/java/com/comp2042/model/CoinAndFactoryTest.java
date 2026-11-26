@@ -197,6 +197,71 @@ class CoinAndFactoryTest {
         assertTrue(observedTypes.contains(CoinType.RED));
     }
 
+    // Leaves only one non-portal cell free on a compact board.
+    // Expects both Coin and CoinFactory to avoid active portal coordinates.
+    @Test
+    @DisplayName("Coins and coin factory avoid active portal cells")
+    void coinsAndFactoryAvoidActivePortals() {
+        Point onlyFreeCell = new Point(0, 0);
+        Point portalA = new Point(0, 2);
+        Point portalB = new Point(2, 2);
+        List<Point> blocked = allCells(3, 3);
+        blocked.remove(onlyFreeCell);
+        blocked.remove(portalA);
+        blocked.remove(portalB);
+
+        FixedObstacle occupiedObstacle = new FixedObstacle(3, 3, blocked);
+        Snake restrictedSnake = new Snake(3, 3, false, occupiedObstacle);
+        Game smallGame = new Game(3, 3, true, 'N');
+        smallGame.getPortalPair().spawnAt(portalA, portalB);
+
+        Coin directCoin = new Coin(
+                3,
+                3,
+                restrictedSnake,
+                occupiedObstacle,
+                smallGame.getPortalPair()
+        );
+        assertEquals(onlyFreeCell, directCoin.getPos());
+
+        CoinFactory factory = new CoinFactory();
+        for (int index = 0; index < 20; index++) {
+            Coin createdCoin = factory.createCoin(
+                    smallGame,
+                    restrictedSnake,
+                    occupiedObstacle
+            );
+            assertEquals(onlyFreeCell, createdCoin.getPos());
+        }
+    }
+
+    // Triggers a silver coin while portals are active on a small board.
+    // Expects newly spawned obstacles to avoid both portal cells.
+    @Test
+    @DisplayName("Silver coin obstacles avoid active portal cells")
+    void silverCoinObstaclesAvoidActivePortals() {
+        Game smallGame = new Game(4, 4, true, 'N');
+        Obstacle smallObstacle = new Obstacle(4, 4);
+        Snake smallSnake = new Snake(4, 4, false, smallObstacle);
+        Point portalA = new Point(0, 0);
+        Point portalB = new Point(3, 3);
+        smallGame.getPortalPair().spawnAt(portalA, portalB);
+
+        SilverCoin silverCoin = new SilverCoin(
+                4,
+                4,
+                smallSnake,
+                smallObstacle,
+                smallGame.getPortalPair()
+        );
+        silverCoin.applyEffect(smallGame, smallSnake, smallObstacle);
+
+        List<Point> generated = smallObstacle.getObstacles();
+        assertFalse(generated.isEmpty());
+        assertFalse(generated.contains(portalA));
+        assertFalse(generated.contains(portalB));
+    }
+
     // Builds a cell list excluding one point.
     // Leaves exactly one free board cell.
     private static List<Point> allCellsExcept(
