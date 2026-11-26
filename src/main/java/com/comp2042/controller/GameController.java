@@ -358,14 +358,28 @@ public class GameController {
         pressedKeys.remove(event.getCode());
     }
 
+    /**
+     * Stops the gameplay timeline and clears transient input state when the session ends or its window closes.
+     */
+    public void stop() {
+        animation.stop();
+        pressedKeys.clear();
+        keyPressed = false;
+    }
+
     // Accepts valid directions while a game can run.
     private void handleDirection(KeyCode eventCode) {
-        // Ignore repeats of the active direction.
-        // Preserve the next turn opportunity.
-        if (!canRun()
-                || !valKey(eventCode)
-                || keyPressed
-                || eventCode.equals(key)) {
+        if (!canRun() || !valKey(eventCode) || keyPressed) {
+            return;
+        }
+
+        // Start a READY session when the initial heading key is pressed.
+        // Keep keyPressed false so no corner turn marker is recorded.
+        if (eventCode.equals(key)) {
+            if (game.getState() == GameState.READY) {
+                game.setState(GameState.RUNNING);
+                animation.play();
+            }
             return;
         }
 
@@ -424,7 +438,7 @@ public class GameController {
             return;
         }
 
-        animation.stop();
+        stop();
         viewManager.getPrimaryStage().show();
         viewManager.getGameStage().close();
     }

@@ -104,6 +104,8 @@ public class MainMenuController {
         // Track every key release.
         // Restore shortcut availability.
         gameScene.setOnKeyReleased(controller::handleKeyReleased);
+        // Stop the gameplay timeline when the game window is closed or hidden.
+        gameStage.setOnHidden(e -> controller.stop());
         gameView.makeScene(snake, coin, obstacle);
         gameView.layoutGamePane(gamePane);
         return gameScene;

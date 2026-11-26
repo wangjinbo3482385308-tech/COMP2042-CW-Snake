@@ -22,7 +22,26 @@ public class Coin {
      * @param obstacle obstacle manager occupying board cells
      */
     public Coin(int x, int y, Snake snake, Obstacle obstacle) {
-        this(x, y, snake, obstacle, CoinType.RED);
+        this(x, y, snake, obstacle, CoinType.RED, null);
+    }
+
+    /**
+     * Creates a standard red coin on a random unoccupied board cell while avoiding active portals.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param snake active snake occupying board cells
+     * @param obstacle obstacle manager occupying board cells
+     * @param portalPair active portal pair to avoid, or {@code null} when unused
+     */
+    public Coin(
+            int x,
+            int y,
+            Snake snake,
+            Obstacle obstacle,
+            PortalPair portalPair
+    ) {
+        this(x, y, snake, obstacle, CoinType.RED, portalPair);
     }
 
     /**
@@ -41,8 +60,29 @@ public class Coin {
             Obstacle obstacle,
             CoinType type
     ) {
+        this(x, y, snake, obstacle, type, null);
+    }
+
+    /**
+     * Creates a coin of the specified type on a random unoccupied board cell while avoiding active portals.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param snake active snake occupying board cells
+     * @param obstacle obstacle manager occupying board cells
+     * @param type logical coin type used by the view layer
+     * @param portalPair active portal pair to avoid, or {@code null} when unused
+     */
+    protected Coin(
+            int x,
+            int y,
+            Snake snake,
+            Obstacle obstacle,
+            CoinType type,
+            PortalPair portalPair
+    ) {
         this.type = type;
-        pos = findAvailablePosition(x, y, snake, obstacle);
+        pos = findAvailablePosition(x, y, snake, obstacle, portalPair);
     }
 
     // Collects every cell.
@@ -51,13 +91,14 @@ public class Coin {
             int width,
             int height,
             Snake snake,
-            Obstacle obstacle
+            Obstacle obstacle,
+            PortalPair portalPair
     ) {
         List<Point> availableCells = new ArrayList<>();
         for (int column = 0; column < width; column++) {
             for (int row = 0; row < height; row++) {
                 Point candidate = new Point(column, row);
-                if (isAvailable(candidate, snake, obstacle)) {
+                if (isAvailable(candidate, snake, obstacle, portalPair)) {
                     availableCells.add(candidate);
                 }
             }
@@ -76,15 +117,26 @@ public class Coin {
         return availableCells.get(index);
     }
 
-    // Checks every board occupant before accepting a position.
+    // Checks every board occupant and active portals before accepting a position.
     private boolean isAvailable(
             Point candidate,
             Snake snake,
-            Obstacle obstacle
+            Obstacle obstacle,
+            PortalPair portalPair
     ) {
         return !snake.getHead().equals(candidate)
                 && !snake.getBody().contains(candidate)
-                && !obstacle.getObstacles().contains(candidate);
+                && !obstacle.getObstacles().contains(candidate)
+                && !isPortalCell(candidate, portalPair);
+    }
+
+    // Reports whether a cell is occupied by an active portal endpoint.
+    private boolean isPortalCell(Point candidate, PortalPair portalPair) {
+        if (portalPair == null || !portalPair.isActive()) {
+            return false;
+        }
+        return candidate.equals(portalPair.getPortalA())
+                || candidate.equals(portalPair.getPortalB());
     }
 
     /**

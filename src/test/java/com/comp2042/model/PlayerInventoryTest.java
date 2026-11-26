@@ -226,7 +226,9 @@ class PlayerInventoryTest {
                 new Point(9, 9),
                 new Point(11, 11),
                 new Point(8, 10),
-                new Point(12, 10)
+                new Point(12, 10),
+                new Point(13, 10),
+                new Point(14, 10)
         );
         setObstacles(obstacle, obstacles);
 
@@ -243,8 +245,10 @@ class PlayerInventoryTest {
         assertFalse(snake.getDead());
         assertEquals(expectedBody, snake.getBody());
         assertFalse(snake.hitSelf());
-        assertEquals(List.of(new Point(8, 10), new Point(12, 10)),
-                obstacle.getObstacles());
+        for (Point segment : expectedBody) {
+            assertFalse(obstacle.getObstacles().contains(segment));
+        }
+        assertEquals(List.of(new Point(8, 10)), obstacle.getObstacles());
     }
 
     // Revives short snakes with one or two body segments.

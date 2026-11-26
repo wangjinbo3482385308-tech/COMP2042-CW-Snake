@@ -73,6 +73,7 @@ public class GameView {
         // Include shop stock in the same label.
         scoreLabel = createLabel(formatScoreText(0), "scoreLabel");
         scoreLabel.setVisible(true);
+        scoreLabel.setWrapText(true);
         turnArray = new int[game.getWidth()][game.getHeight()];
         headRotationCache = new HashMap<>();
         bodyRotationCache = new HashMap<>();
@@ -130,12 +131,13 @@ public class GameView {
                 scoreLabel
         );
         gamePane.setPadding(new Insets(20));
-        gamePane.setAlignment(gameOverLabel, Pos.TOP_CENTER);
-        gamePane.setAlignment(gameWonLabel, Pos.TOP_CENTER);
+        gamePane.setAlignment(gameOverLabel, Pos.CENTER);
+        gamePane.setAlignment(gameWonLabel, Pos.CENTER);
         gamePane.setAlignment(scoreLabel, Pos.TOP_LEFT);
         // Keep the HUD at the top of the play area.
-        // Use the full width for two compact rows.
+        // Use the full width and wrapping for compact rows.
         scoreLabel.setMaxWidth(Double.MAX_VALUE);
+        scoreLabel.setWrapText(true);
         scoreLabel.setAlignment(Pos.TOP_LEFT);
         scoreLabel.setTextAlignment(TextAlignment.LEFT);
         StackPane.setMargin(scoreLabel, new Insets(2, 2, 0, 2));
@@ -860,7 +862,7 @@ public class GameView {
             String reviveStatus = inventory.hasReviveStone()
                     ? "ON"
                     : PowerUpType.REVIVE_STONE.getCost() + "pt";
-            reviveOption = "  [3]Revive: " + reviveStatus;
+            reviveOption = "  [3]Rev: " + reviveStatus;
         }
 
         // Show a compact portal state while active.
@@ -868,17 +870,16 @@ public class GameView {
         PortalPair portalPair = game.getPortalPair();
         String portalOption = "";
         if (portalPair.isActive()) {
-            String portalStatus = portalPair.isTraversing()
-                    ? "WARPING"
-                    : "READY";
-            portalOption = "  Portal: " + portalStatus;
+            portalOption = portalPair.isTraversing()
+                    ? "  [P:WARP]"
+                    : "  [P:ON]";
         }
 
         return String.format(
                 Locale.ROOT,
                 "Score: %d | %s (%.1fx) | Pts: %d\n"
-                        + "[1]Shield: %d/%d  "
-                        + "[2]Magnet: %s%s%s",
+                        + "[1]Shd: %d/%d  "
+                        + "[2]Mag: %s%s%s",
                 scorePoints,
                 game.getSpeedTier().getDisplayName(),
                 game.getSpeedTier().getScoreMultiplier(),

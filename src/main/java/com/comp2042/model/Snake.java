@@ -305,11 +305,12 @@ public class Snake {
     }
 
     /**
-     * Revives the snake at the board center facing left, clears nearby obstacles, and halves its body length.
+     * Revives the snake at the board center facing left, halves its body length,
+     * and clears obstacles around the head and along every revived body segment.
      *
      * @param width board width in grid cells
      * @param height board height in grid cells
-     * @param obstacle obstacle manager whose cells around the center are cleared, or {@code null}
+     * @param obstacle obstacle manager whose cells around the center and revived body are cleared, or {@code null}
      */
     public void reviveAtCenter(int width, int height, Obstacle obstacle) {
         int centerX = width / 2;
@@ -332,6 +333,13 @@ public class Snake {
         // Farthest cells are stored first.
         for (int offset = newBodySize; offset >= 1; offset--) {
             body.add(new Point(centerX + offset, centerY));
+        }
+
+        // Clear any obstacle underneath the rebuilt body segments.
+        if (obstacle != null) {
+            for (Point segment : body) {
+                obstacle.removeObstacleAt(segment);
+            }
         }
     }
 

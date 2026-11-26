@@ -85,4 +85,31 @@ class ObstacleTest {
 
         assertTrue(obstacle.getObstacles().isEmpty());
     }
+
+    // Spawns obstacles on a compact board with active portals.
+    // Expects active portal cells to remain unobstructed.
+    @Test
+    @DisplayName("Generated obstacles avoid active portal cells")
+    void generatedObstaclesAvoidActivePortals() {
+        Obstacle smallObstacle = new Obstacle(3, 3);
+        Snake smallSnake = new Snake(3, 3, false, smallObstacle);
+        Coin smallCoin = new Coin(3, 3, smallSnake, smallObstacle);
+        PortalPair portalPair = new PortalPair();
+        Point portalA = new Point(0, 2);
+        Point portalB = new Point(2, 2);
+        if (portalA.equals(smallCoin.getPos())) {
+            portalA = new Point(0, 0);
+        }
+        if (portalB.equals(smallCoin.getPos())) {
+            portalB = new Point(2, 0);
+        }
+        portalPair.spawnAt(portalA, portalB);
+
+        smallObstacle.newObstacles(smallSnake, smallCoin, 20, portalPair);
+
+        List<Point> generated = smallObstacle.getObstacles();
+        assertFalse(generated.isEmpty());
+        assertFalse(generated.contains(portalA));
+        assertFalse(generated.contains(portalB));
+    }
 }

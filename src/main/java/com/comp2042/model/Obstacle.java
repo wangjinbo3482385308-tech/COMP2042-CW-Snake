@@ -38,6 +38,24 @@ public class Obstacle {
      * @param amount maximum number of new obstacles to place
      */
     public void newObstacles(Snake snake, Coin coin, int amount) {
+        newObstacles(snake, coin, amount, null);
+    }
+
+    /**
+     * Spawns up to the requested number of obstacles on unoccupied cells while avoiding active portals.
+     * Bounds search attempts per obstacle and stops at the board obstacle cap.
+     *
+     * @param snake active snake occupying board cells
+     * @param coin active coin occupying a board cell
+     * @param amount maximum number of new obstacles to place
+     * @param portalPair active portal pair to avoid, or {@code null} when unused
+     */
+    public void newObstacles(
+            Snake snake,
+            Coin coin,
+            int amount,
+            PortalPair portalPair
+    ) {
         int maxAttempts = Math.max(1, width * height * 4);
 
         for (int index = 0; index < amount; index++) {
@@ -51,7 +69,7 @@ public class Obstacle {
                         random.nextInt(width),
                         random.nextInt(height)
                 );
-                if (isAvailable(possible, snake, coin)) {
+                if (isAvailable(possible, snake, coin, portalPair)) {
                     candidate = possible;
                     break;
                 }
@@ -64,12 +82,27 @@ public class Obstacle {
         }
     }
 
-    // Checks board occupants before adding a cell.
-    private boolean isAvailable(Point point, Snake snake, Coin coin) {
+    // Checks board occupants and active portals before adding a cell.
+    private boolean isAvailable(
+            Point point,
+            Snake snake,
+            Coin coin,
+            PortalPair portalPair
+    ) {
         return !obstacles.contains(point)
                 && !snake.getHead().equals(point)
                 && !snake.getBody().contains(point)
-                && !coin.getPos().equals(point);
+                && !coin.getPos().equals(point)
+                && !isPortalCell(point, portalPair);
+    }
+
+    // Reports whether a cell is occupied by an active portal endpoint.
+    private boolean isPortalCell(Point point, PortalPair portalPair) {
+        if (portalPair == null || !portalPair.isActive()) {
+            return false;
+        }
+        return point.equals(portalPair.getPortalA())
+                || point.equals(portalPair.getPortalB());
     }
 
     /**

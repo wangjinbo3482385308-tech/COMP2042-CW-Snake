@@ -14,7 +14,26 @@ public class BlueCoin extends Coin {
      * @param obstacle obstacle manager occupying board cells
      */
     public BlueCoin(int x, int y, Snake snake, Obstacle obstacle) {
-        super(x, y, snake, obstacle, CoinType.BLUE);
+        this(x, y, snake, obstacle, null);
+    }
+
+    /**
+     * Spawns a blue coin on an unoccupied board cell while avoiding active portals.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param snake active snake occupying board cells
+     * @param obstacle obstacle manager occupying board cells
+     * @param portalPair active portal pair to avoid, or {@code null} when unused
+     */
+    public BlueCoin(
+            int x,
+            int y,
+            Snake snake,
+            Obstacle obstacle,
+            PortalPair portalPair
+    ) {
+        super(x, y, snake, obstacle, CoinType.BLUE, portalPair);
     }
 
     /**
