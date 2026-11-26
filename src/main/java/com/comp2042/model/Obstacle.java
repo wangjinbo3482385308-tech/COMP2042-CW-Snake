@@ -13,7 +13,9 @@ public class Obstacle {
 
     private final int width;
     private final int height;
+    private final List<Point> baseObstacles;
     private final List<Point> obstacles;
+    private final List<Point> dynamicObstacles;
     private final Random random;
 
     /**
@@ -25,8 +27,37 @@ public class Obstacle {
     public Obstacle(int x, int y) {
         width = x;
         height = y;
+        baseObstacles = new ArrayList<>();
         obstacles = new ArrayList<>();
+        dynamicObstacles = new ArrayList<>();
         random = new Random();
+    }
+
+    /**
+     * Creates an obstacle manager preloaded with the static layout of the supplied level map.
+     *
+     * @param x board width in grid cells
+     * @param y board height in grid cells
+     * @param levelMap preset level map to load, or {@code null} for {@link LevelMap#CLASSIC}
+     */
+    public Obstacle(int x, int y, LevelMap levelMap) {
+        this(x, y);
+        applyLevelMap(levelMap);
+    }
+
+    /**
+     * Loads a preset level map's static obstacles as the baseline layout and clears dynamic obstacles.
+     * Defaults to {@link LevelMap#CLASSIC} when {@code levelMap} is {@code null}.
+     *
+     * @param levelMap preset level map to apply, or {@code null} for {@link LevelMap#CLASSIC}
+     */
+    public void applyLevelMap(LevelMap levelMap) {
+        LevelMap resolvedMap = levelMap == null ? LevelMap.CLASSIC : levelMap;
+        baseObstacles.clear();
+        for (Point point : resolvedMap.buildObstacles(width, height)) {
+            baseObstacles.add(new Point(point));
+        }
+        reset();
     }
 
     /**
@@ -79,6 +110,7 @@ public class Obstacle {
                 return;
             }
             obstacles.add(candidate);
+            dynamicObstacles.add(new Point(candidate));
         }
     }
 
@@ -111,7 +143,38 @@ public class Obstacle {
      * @return list of obstacle cell positions
      */
     public List<Point> getObstacles() {
-        return new ArrayList<>(obstacles);
+        List<Point> copy = new ArrayList<>(obstacles.size());
+        for (Point point : obstacles) {
+            copy.add(new Point(point));
+        }
+        return copy;
+    }
+
+    /**
+     * Reports whether any dynamically generated obstacles are currently active on the board.
+     *
+     * @return {@code true} if at least one dynamic obstacle is present
+     */
+    public boolean hasDynamicObstacles() {
+        return !dynamicObstacles.isEmpty();
+    }
+
+    /**
+     * Returns the number of dynamically generated obstacles currently active on the board.
+     *
+     * @return active dynamic obstacle count
+     */
+    public int getDynamicObstacleCount() {
+        return dynamicObstacles.size();
+    }
+
+    /**
+     * Returns the number of static preset obstacles configured for the active level map.
+     *
+     * @return preset level obstacle count
+     */
+    public int getBaseObstacleCount() {
+        return baseObstacles.size();
     }
 
     /**
@@ -125,6 +188,7 @@ public class Obstacle {
             return false;
         }
 
+        dynamicObstacles.removeIf(point::equals);
         return obstacles.removeIf(point::equals);
     }
 
@@ -139,14 +203,20 @@ public class Obstacle {
             return;
         }
 
+        dynamicObstacles.removeIf(point -> Math.abs(point.x - center.x) <= radius
+                && Math.abs(point.y - center.y) <= radius);
         obstacles.removeIf(point -> Math.abs(point.x - center.x) <= radius
                 && Math.abs(point.y - center.y) <= radius);
     }
 
     /**
-     * Clears all obstacles for a new game run.
+     * Clears all dynamically generated obstacles and restores the current level's preset obstacles.
      */
     public void reset() {
         obstacles.clear();
+        dynamicObstacles.clear();
+        for (Point point : baseObstacles) {
+            obstacles.add(new Point(point));
+        }
     }
 }

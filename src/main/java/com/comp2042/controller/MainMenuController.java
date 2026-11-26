@@ -3,6 +3,7 @@ package com.comp2042.controller;
 import com.comp2042.Main;
 import com.comp2042.model.Coin;
 import com.comp2042.model.Game;
+import com.comp2042.model.LevelMap;
 import com.comp2042.model.Obstacle;
 import com.comp2042.model.Snake;
 import com.comp2042.model.SpeedTier;
@@ -33,6 +34,15 @@ public class MainMenuController {
     @FXML
     private RadioButton fastSpeedButton;
 
+    // Hold the selectable preset level maps.
+    // Classic remains the default choice.
+    @FXML
+    private RadioButton classicLevelButton;
+    @FXML
+    private RadioButton pillarsLevelButton;
+    @FXML
+    private RadioButton arenaLevelButton;
+
     /**
      * Creates a menu controller bound to the application's shared view manager.
      */
@@ -41,7 +51,7 @@ public class MainMenuController {
     }
 
     /**
-     * Initializes a new game session from the selected speed tier and displays the game window.
+     * Initializes a new game session from the selected speed tier and level map, then displays the game window.
      */
     public void handleStart() {
         viewManager.initGameStage();
@@ -53,21 +63,24 @@ public class MainMenuController {
     }
 
     // Builds the game collaborators.
-    // Passes the selected tier to the model.
+    // Loads preset level obstacles before creating the initial coin.
     private Scene launchSnake(Stage gameStage) {
-        // Resolve the choice before building the model.
-        // Keep tier-dependent rules inside Game.
+        // Resolve menu selections before building the model.
+        // Keep tier- and level-dependent rules inside Game and Obstacle.
         SpeedTier selectedTier = getSelectedSpeedTier();
+        LevelMap selectedLevel = getSelectedLevelMap();
         Game game = new Game(
                 X_VALUE,
                 Y_VALUE,
                 selectedTier,
-                POWER_UP
+                POWER_UP,
+                selectedLevel
         );
         Obstacle obstacle = new Obstacle(
                 game.getWidth(),
                 game.getHeight()
         );
+        obstacle.applyLevelMap(game.getLevelMap());
         Snake snake = new Snake(
                 game.getWidth(),
                 game.getHeight(),
@@ -126,6 +139,21 @@ public class MainMenuController {
             return SpeedTier.FAST;
         }
         return SpeedTier.NORMAL;
+    }
+
+    // Map the menu selection to a preset level map.
+    // Missing choices safely default to classic.
+    private LevelMap getSelectedLevelMap() {
+        if (pillarsLevelButton != null && pillarsLevelButton.isSelected()) {
+            return LevelMap.PILLARS;
+        }
+        if (arenaLevelButton != null && arenaLevelButton.isSelected()) {
+            return LevelMap.ARENA;
+        }
+        if (classicLevelButton != null && classicLevelButton.isSelected()) {
+            return LevelMap.CLASSIC;
+        }
+        return LevelMap.CLASSIC;
     }
 
     /**

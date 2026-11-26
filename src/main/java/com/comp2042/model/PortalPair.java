@@ -2,8 +2,10 @@ package com.comp2042.model;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Manages paired portal spawning, head teleportation, and full-body traversal progress.
@@ -36,7 +38,7 @@ public class PortalPair {
 
     /**
      * Advances the portal spawn cooldown and spawns a pair on free cells when eligible.
-     * Prefers cell pairs separated by at least {@link #MIN_PORTAL_DISTANCE}.
+     * Prefers open cells clear of walls and corners separated by at least {@link #MIN_PORTAL_DISTANCE}.
      *
      * @param currentScorePoints player's current score points
      * @param deltaSeconds elapsed gameplay time in seconds
@@ -75,18 +77,19 @@ public class PortalPair {
             return false;
         }
 
+        Set<Point> obstacleSet = new HashSet<>(obstacle.getObstacles());
         List<Point> freeCells = collectFreeCells(
                 width,
                 height,
                 snake,
                 coin,
-                obstacle
+                obstacleSet
         );
         if (freeCells.size() < 2) {
             return false;
         }
 
-        selectPortalCells(freeCells);
+        selectPortalCells(freeCells, width, height, obstacleSet);
         active = true;
         traversing = false;
         remainingSegments = 0;
@@ -248,13 +251,12 @@ public class PortalPair {
             int height,
             Snake snake,
             Coin coin,
-            Obstacle obstacle
+            Set<Point> obstacleSet
     ) {
         List<Point> freeCells = new ArrayList<>();
         Point head = snake.getHead();
-        List<Point> body = snake.getBody();
+        Set<Point> body = new HashSet<>(snake.getBody());
         Point coinPosition = coin.getPos();
-        List<Point> obstacles = obstacle.getObstacles();
 
         for (int column = 0; column < width; column++) {
             for (int row = 0; row < height; row++) {
@@ -262,7 +264,7 @@ public class PortalPair {
                 if (candidate.equals(head)
                         || body.contains(candidate)
                         || candidate.equals(coinPosition)
-                        || obstacles.contains(candidate)) {
+                        || obstacleSet.contains(candidate)) {
                     continue;
                 }
                 freeCells.add(candidate);
@@ -271,18 +273,105 @@ public class PortalPair {
         return freeCells;
     }
 
-    // Selects random cells with a preferred separation.
-    // Falls back when the board is too compact.
-    private void selectPortalCells(List<Point> freeCells) {
+    // Selects random portal cells, preferring open interior cells clear of walls
+    // and corners before falling back to less open or closer cells on crowded boards.
+    private void selectPortalCells(
+            List<Point> freeCells,
+            int width,
+            int height,
+            Set<Point> obstacleSet
+    ) {
+        List<Point> fourExitCells = filterByMinOpenNeighbors(
+                freeCells,
+                width,
+                height,
+                obstacleSet,
+                4
+        );
+        if (trySelectDistantPair(fourExitCells)) {
+            return;
+        }
+
+        List<Point> threeExitCells = filterByMinOpenNeighbors(
+                freeCells,
+                width,
+                height,
+                obstacleSet,
+                3
+        );
+        if (trySelectDistantPair(threeExitCells)) {
+            return;
+        }
+
+        if (trySelectDistantPair(freeCells)) {
+            return;
+        }
+
+        if (fourExitCells.size() >= 2) {
+            selectAnyPair(fourExitCells);
+            return;
+        }
+        if (threeExitCells.size() >= 2) {
+            selectAnyPair(threeExitCells);
+            return;
+        }
+        selectAnyPair(freeCells);
+    }
+
+    // Filters free cells to those with at least minOpenNeighbors unobstructed orthogonal exits.
+    private List<Point> filterByMinOpenNeighbors(
+            List<Point> cells,
+            int width,
+            int height,
+            Set<Point> obstacleSet,
+            int minOpenNeighbors
+    ) {
+        List<Point> filtered = new ArrayList<>();
+        for (Point cell : cells) {
+            if (countOpenNeighbors(cell, width, height, obstacleSet)
+                    >= minOpenNeighbors) {
+                filtered.add(cell);
+            }
+        }
+        return filtered;
+    }
+
+    // Counts unobstructed orthogonal neighbors inside the board.
+    private int countOpenNeighbors(
+            Point cell,
+            int width,
+            int height,
+            Set<Point> obstacleSet
+    ) {
+        int open = 0;
+        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] dir : directions) {
+            int nx = cell.x + dir[0];
+            int ny = cell.y + dir[1];
+            if (nx >= 0 && nx < width
+                    && ny >= 0 && ny < height
+                    && !obstacleSet.contains(new Point(nx, ny))) {
+                open++;
+            }
+        }
+        return open;
+    }
+
+    // Picks a random pair meeting the preferred Manhattan separation when available.
+    private boolean trySelectDistantPair(List<Point> candidates) {
+        if (candidates.size() < 2) {
+            return false;
+        }
+
         List<Point[]> distantPairs = new ArrayList<>();
         for (int firstIndex = 0;
-                firstIndex < freeCells.size();
+                firstIndex < candidates.size();
                 firstIndex++) {
             for (int secondIndex = firstIndex + 1;
-                    secondIndex < freeCells.size();
+                    secondIndex < candidates.size();
                     secondIndex++) {
-                Point first = freeCells.get(firstIndex);
-                Point second = freeCells.get(secondIndex);
+                Point first = candidates.get(firstIndex);
+                Point second = candidates.get(secondIndex);
                 if (manhattanDistance(first, second)
                         >= MIN_PORTAL_DISTANCE) {
                     distantPairs.add(new Point[] {first, second});
@@ -290,22 +379,27 @@ public class PortalPair {
             }
         }
 
-        if (!distantPairs.isEmpty()) {
-            Point[] selected = distantPairs.get(
-                    random.nextInt(distantPairs.size())
-            );
-            setPortals(selected[0], selected[1]);
-            return;
+        if (distantPairs.isEmpty()) {
+            return false;
         }
 
-        int firstIndex = random.nextInt(freeCells.size());
-        int secondIndex = random.nextInt(freeCells.size() - 1);
+        Point[] selected = distantPairs.get(
+                random.nextInt(distantPairs.size())
+        );
+        setPortals(selected[0], selected[1]);
+        return true;
+    }
+
+    // Picks any two distinct cells from a non-trivial candidate list.
+    private void selectAnyPair(List<Point> candidates) {
+        int firstIndex = random.nextInt(candidates.size());
+        int secondIndex = random.nextInt(candidates.size() - 1);
         if (secondIndex >= firstIndex) {
             secondIndex++;
         }
         setPortals(
-                freeCells.get(firstIndex),
-                freeCells.get(secondIndex)
+                candidates.get(firstIndex),
+                candidates.get(secondIndex)
         );
     }
 

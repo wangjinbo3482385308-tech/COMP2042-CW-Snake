@@ -284,6 +284,47 @@ class PortalPairTest {
         );
     }
 
+    // Repeatedly spawns portals on Arena and Pillars maps.
+    // Expects every endpoint to sit on an open cell with four unobstructed exits.
+    @Test
+    @DisplayName("Portals on Arena and Pillars avoid corners and wall-adjacent trap cells")
+    void portalsOnPresetMapsAvoidWallsAndCorners() {
+        for (LevelMap levelMap : List.of(LevelMap.PILLARS, LevelMap.ARENA)) {
+            Obstacle levelObstacle = new Obstacle(WIDTH, HEIGHT, levelMap);
+            List<Point> wallPoints = levelObstacle.getObstacles();
+            Snake snake = new Snake(WIDTH, HEIGHT, false, levelObstacle);
+            Coin coin = new Coin(WIDTH, HEIGHT, snake, levelObstacle);
+
+            for (int trial = 0; trial < 60; trial++) {
+                PortalPair pair = new PortalPair();
+                assertTrue(pair.updateSpawnTimer(
+                        100,
+                        0.0,
+                        WIDTH,
+                        HEIGHT,
+                        snake,
+                        coin,
+                        levelObstacle
+                ));
+
+                assertOpenFourExits(pair.getPortalA(), wallPoints);
+                assertOpenFourExits(pair.getPortalB(), wallPoints);
+                assertTrue(distance(pair.getPortalA(), pair.getPortalB())
+                        >= PortalPair.MIN_PORTAL_DISTANCE);
+            }
+        }
+    }
+
+    // Verifies a portal cell is away from board edges and all orthogonal walls.
+    private static void assertOpenFourExits(Point cell, List<Point> walls) {
+        assertTrue(cell.x > 0 && cell.x < WIDTH - 1);
+        assertTrue(cell.y > 0 && cell.y < HEIGHT - 1);
+        assertFalse(walls.contains(new Point(cell.x + 1, cell.y)));
+        assertFalse(walls.contains(new Point(cell.x - 1, cell.y)));
+        assertFalse(walls.contains(new Point(cell.x, cell.y + 1)));
+        assertFalse(walls.contains(new Point(cell.x, cell.y - 1)));
+    }
+
     // Grows a snake once through a coin.
     // Returns one head and two body segments.
     private Snake snakeWithTwoBodySegments() {
