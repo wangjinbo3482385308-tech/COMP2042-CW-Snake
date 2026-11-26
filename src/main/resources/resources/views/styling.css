@@ -60,6 +60,10 @@
     -fx-font-family: "SF Pixelate";
     -fx-font-size: 30;
 }
+#pausedLabel {
+    -fx-font-family: "SF Pixelate";
+    -fx-font-size: 30;
+}
 #scoreLabel {
     -fx-font-family: "SF Pixelate";
     -fx-font-size: 20;

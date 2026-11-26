@@ -96,7 +96,9 @@ public class MainMenuController {
         Scene gameScene = new Scene(
                 gamePane,
                 game.getWidth() * game.getMultiplier() + 40,
-                game.getHeight() * game.getMultiplier() + 40
+                game.getHeight() * game.getMultiplier()
+                        + 40
+                        + gameView.getHudReservedHeight()
         );
         // Capture shortcut presses.
         // Filter held-key repeats in the controller.
