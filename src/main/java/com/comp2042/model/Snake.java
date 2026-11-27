@@ -65,15 +65,25 @@ public class Snake {
         selfCollision = false;
         body.add(new Point(head));
 
+        boolean shieldWallRollback;
         switch (direction) {
-            case 'U' -> moveHead(0, -1, 0, inventory);
-            case 'D' -> moveHead(0, 1, 180, inventory);
-            case 'L' -> moveHead(-1, 0, 270, inventory);
-            case 'R' -> moveHead(1, 0, 90, inventory);
+            case 'U' -> shieldWallRollback = moveHead(0, -1, 0, inventory);
+            case 'D' -> shieldWallRollback = moveHead(0, 1, 180, inventory);
+            case 'L' -> shieldWallRollback = moveHead(-1, 0, 270, inventory);
+            case 'R' -> shieldWallRollback = moveHead(1, 0, 90, inventory);
             default -> {
                 body.remove(body.size() - 1);
                 return false;
             }
+        }
+
+        // Roll back in place after spending a single shield when a wall wrap would self-collide.
+        if (shieldWallRollback) {
+            head.setLocation(previousHead);
+            snakeDir = previousDir;
+            body.remove(body.size() - 1);
+            dead = false;
+            return false;
         }
 
         // Stop immediately after unresolved terrain collisions.
@@ -150,7 +160,9 @@ public class Snake {
     }
 
     // Applies one movement vector and its border behavior.
-    private void moveHead(
+    // Returns true when a shield-protected wall hit must roll back in place
+    // because the wrapped landing cell is occupied by a non-tail body segment.
+    private boolean moveHead(
             int deltaX,
             int deltaY,
             int direction,
@@ -164,24 +176,29 @@ public class Snake {
                 wrapHead(deltaX, deltaY);
                 resolveObstacleAtWrappedHead(inventory);
             } else if (inventory != null && inventory.consumeShield()) {
-                wrapHead(deltaX, deltaY);
+                Point wrappedTarget = computeWrappedHead(deltaX, deltaY);
+                if (hitsNonTailBody(wrappedTarget)) {
+                    return true;
+                }
+                head.setLocation(wrappedTarget);
                 obstacle.removeObstacleAt(head);
             } else {
                 head.translate(-deltaX, -deltaY);
                 dead = true;
             }
-            return;
+            return false;
         }
 
         if (obstacle.getObstacles().contains(head)) {
             if (inventory != null && inventory.consumeShield()) {
                 obstacle.removeObstacleAt(head);
-                return;
+                return false;
             }
 
             head.translate(-deltaX, -deltaY);
             dead = true;
         }
+        return false;
     }
 
     // Resolves an obstacle at a wrapped destination.
@@ -200,15 +217,35 @@ public class Snake {
 
     // Places a wrapped head on the opposite board edge.
     private void wrapHead(int deltaX, int deltaY) {
+        head.setLocation(computeWrappedHead(deltaX, deltaY));
+    }
+
+    // Computes the opposite-edge coordinate for an out-of-bounds movement vector.
+    private Point computeWrappedHead(int deltaX, int deltaY) {
         if (deltaY < 0) {
-            head.setLocation(head.getX(), gridHeight - 1);
-        } else if (deltaY > 0) {
-            head.setLocation(head.getX(), 0);
-        } else if (deltaX < 0) {
-            head.setLocation(gridWidth - 1, head.getY());
-        } else if (deltaX > 0) {
-            head.setLocation(0, head.getY());
+            return new Point(head.x, gridHeight - 1);
         }
+        if (deltaY > 0) {
+            return new Point(head.x, 0);
+        }
+        if (deltaX < 0) {
+            return new Point(gridWidth - 1, head.y);
+        }
+        if (deltaX > 0) {
+            return new Point(0, head.y);
+        }
+        return new Point(head);
+    }
+
+    // Checks whether a landing cell overlaps any non-tail body segment.
+    // Skips index 0 because the tail vacates unless the snake grows.
+    private boolean hitsNonTailBody(Point target) {
+        for (int index = 1; index < body.size(); index++) {
+            if (body.get(index).equals(target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Reports grid coordinates outside the playable board.

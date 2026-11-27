@@ -166,6 +166,67 @@ class PlayerInventoryTest {
         assertEquals(0, inventory.getShieldCharges());
     }
 
+    // Hits a closed wall whose wrapped landing cell is occupied by a non-tail body segment.
+    // Verifies only one shield is spent and movement rolls back safely in place.
+    @Test
+    @DisplayName("Shielded wall wrap into body spends one shield and rolls back")
+    void shieldedWallWrapIntoBodySpendsOnlyOneShieldAndRollsBack() {
+        Obstacle smallObstacle = new Obstacle(4, 4);
+        Snake borderedSnake = new Snake(4, 4, false, smallObstacle);
+        char[] growthMoves = {'L', 'U', 'R', 'R', 'U', 'L', 'L', 'L'};
+        Point[] growthTargets = {
+                new Point(1, 2),
+                new Point(1, 1),
+                new Point(2, 1),
+                new Point(3, 1),
+                new Point(3, 0),
+                new Point(2, 0),
+                new Point(1, 0),
+                new Point(0, 0)
+        };
+        for (int index = 0; index < growthMoves.length; index++) {
+            Coin food = new FixedCoin(
+                    4,
+                    4,
+                    borderedSnake,
+                    smallObstacle,
+                    growthTargets[index]
+            );
+            assertTrue(borderedSnake.move(growthMoves[index]));
+            assertTrue(borderedSnake.ateCoin(food));
+        }
+
+        Point previousHead = borderedSnake.getHead();
+        int previousDir = borderedSnake.getSnakeDir();
+        List<Point> previousBody = borderedSnake.getBody();
+        assertEquals(new Point(0, 0), previousHead);
+        assertTrue(previousBody.subList(1, previousBody.size())
+                .contains(new Point(3, 0)));
+
+        inventory.addShopPoints(PowerUpType.SHIELD.getCost() * 2);
+        assertTrue(inventory.buyShield());
+        assertTrue(inventory.buyShield());
+        assertEquals(2, inventory.getShieldCharges());
+
+        boolean firstMove = borderedSnake.move('L', inventory);
+
+        assertFalse(firstMove);
+        assertFalse(borderedSnake.getDead());
+        assertEquals(1, inventory.getShieldCharges());
+        assertEquals(previousHead, borderedSnake.getHead());
+        assertEquals(previousDir, borderedSnake.getSnakeDir());
+        assertEquals(previousBody, borderedSnake.getBody());
+
+        boolean secondMove = borderedSnake.move('L', inventory);
+
+        assertFalse(secondMove);
+        assertFalse(borderedSnake.getDead());
+        assertEquals(0, inventory.getShieldCharges());
+        assertEquals(previousHead, borderedSnake.getHead());
+        assertEquals(previousDir, borderedSnake.getSnakeDir());
+        assertEquals(previousBody, borderedSnake.getBody());
+    }
+
     // Checks the five-by-five magnet boundary.
     // Runs the countdown to complete expiry.
     @Test
@@ -188,6 +249,36 @@ class PlayerInventoryTest {
         assertEquals(0.0, inventory.getMagnetTimeRemaining());
         assertFalse(inventory.isMagnetActive());
         assertFalse(inventory.isWithinMagnetRange(head, new Point(11, 10)));
+    }
+
+    // Supplies full-board sentinel and negative coordinates near the origin.
+    // Expects magnet range checks to reject every invalid coin coordinate.
+    @Test
+    @DisplayName("Magnet ignores negative sentinel coin coordinates")
+    void magnetIgnoresInvalidSentinelCoinPosition() {
+        inventory.addShopPoints(PowerUpType.MAGNET.getCost());
+        assertTrue(inventory.buyMagnet());
+
+        assertFalse(inventory.isWithinMagnetRange(
+                new Point(0, 0),
+                new Point(-1, -1)
+        ));
+        assertFalse(inventory.isWithinMagnetRange(
+                new Point(1, 1),
+                new Point(-1, -1)
+        ));
+        assertFalse(inventory.isWithinMagnetRange(
+                new Point(0, 0),
+                new Point(-1, 0)
+        ));
+        assertFalse(inventory.isWithinMagnetRange(
+                new Point(0, 0),
+                new Point(0, -1)
+        ));
+        assertTrue(inventory.isWithinMagnetRange(
+                new Point(0, 0),
+                new Point(1, 1)
+        ));
     }
 
     // Buys the single revive stone.

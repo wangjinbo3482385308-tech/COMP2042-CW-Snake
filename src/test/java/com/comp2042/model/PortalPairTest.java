@@ -230,6 +230,93 @@ class PortalPairTest {
         assertEquals(0.0, pair.getCooldownSeconds());
     }
 
+    // Rolls back a portal exit self-collision via shield.
+    // Expects traversal not to begin and no completion bonus to be awarded.
+    @Test
+    @DisplayName("Shield rollback at portal exit does not start traversal or award bonus")
+    void shieldRollbackAtPortalExitDoesNotStartTraversalOrAwardBonus() {
+        Snake snake = snakeWithTwoBodySegments();
+        PortalPair pair = game.getPortalPair();
+        game.getInventory().addShopPoints(PowerUpType.SHIELD.getCost());
+        assertTrue(game.getInventory().buyShield());
+
+        Point portalA = snake.getHead();
+        Point portalB = snake.getBody().get(1);
+        pair.spawnAt(portalA, portalB);
+
+        boolean completed = pair.onSnakeMoved(
+                game,
+                snake,
+                obstacle,
+                false
+        );
+
+        assertFalse(completed);
+        assertFalse(snake.getDead());
+        assertEquals(portalA, snake.getHead());
+        assertEquals(0, game.getInventory().getShieldCharges());
+        assertTrue(pair.isActive());
+        assertFalse(pair.isTraversing());
+        assertEquals(0, pair.getRemainingSegments());
+        assertEquals(0, game.getScorePoints());
+        assertEquals(0, game.getInventory().getShopPoints());
+    }
+
+    // Resets an active traversal for revival.
+    // Expects cleared portals with a full ten-second spawn cooldown.
+    @Test
+    @DisplayName("Reset with cooldown clears portals and keeps ten-second cooldown")
+    void resetWithCooldownClearsPortalsAndKeepsFullCooldown() {
+        Snake snake = snakeWithTwoBodySegments();
+        Coin coin = new Coin(WIDTH, HEIGHT, snake, obstacle);
+        PortalPair pair = game.getPortalPair();
+        Point portalA = new Point(3, 3);
+        Point portalB = new Point(14, 14);
+        pair.spawnAt(portalA, portalB);
+        snake.teleportHeadTo(
+                portalA,
+                obstacle,
+                game.getInventory()
+        );
+        assertFalse(pair.onSnakeMoved(
+                game,
+                snake,
+                obstacle,
+                false
+        ));
+        assertTrue(pair.isTraversing());
+
+        pair.resetWithCooldown();
+
+        assertFalse(pair.isActive());
+        assertFalse(pair.isTraversing());
+        assertNull(pair.getPortalA());
+        assertNull(pair.getPortalB());
+        assertEquals(0, pair.getRemainingSegments());
+        assertEquals(
+                PortalPair.SPAWN_INTERVAL_SECONDS,
+                pair.getCooldownSeconds()
+        );
+        assertFalse(pair.updateSpawnTimer(
+                PortalPair.SCORE_THRESHOLD,
+                0.0,
+                WIDTH,
+                HEIGHT,
+                snake,
+                coin,
+                obstacle
+        ));
+        assertTrue(pair.updateSpawnTimer(
+                PortalPair.SCORE_THRESHOLD,
+                PortalPair.SPAWN_INTERVAL_SECONDS,
+                WIDTH,
+                HEIGHT,
+                snake,
+                coin,
+                obstacle
+        ));
+    }
+
     // Limits the board to two adjacent free cells.
     // Expects a valid fallback pair.
     @Test

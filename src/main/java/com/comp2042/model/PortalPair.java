@@ -164,7 +164,7 @@ public class PortalPair {
                 obstacle,
                 game.getInventory()
         );
-        if (snake.getDead()) {
+        if (snake.getDead() || !destination.equals(snake.getHead())) {
             return false;
         }
 
@@ -188,6 +188,15 @@ public class PortalPair {
         traversing = false;
         remainingSegments = 0;
         cooldownSeconds = 0.0;
+    }
+
+    /**
+     * Clears active portals and traversal progress while restoring the full spawn cooldown.
+     * Used after revival so a new portal pair does not respawn immediately on the next tick.
+     */
+    public void resetWithCooldown() {
+        reset();
+        cooldownSeconds = SPAWN_INTERVAL_SECONDS;
     }
 
     /**
