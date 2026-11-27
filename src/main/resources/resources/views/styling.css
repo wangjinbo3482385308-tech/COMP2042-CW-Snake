@@ -48,7 +48,8 @@
 }
 
 #title {
-    -fx-font-family: "SF Pixelate Shaded", bold;
+    -fx-font-family: "SF Pixelate Shaded";
+    -fx-font-weight: bold;
     -fx-font-size: 40;
 }
 

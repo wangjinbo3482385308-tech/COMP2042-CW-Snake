@@ -207,9 +207,12 @@ public class GameController {
                     game.getHeight(),
                     obstacle
             );
-            // Clear active portal state after revival.
-            // Prevent a mid-warp death from locking portals.
-            game.getPortalPair().reset();
+            // Clear active portal state after revival and keep the spawn cooldown.
+            // Prevent a mid-warp death from locking portals or spawning immediately.
+            game.getPortalPair().resetWithCooldown();
+            if (!game.gameWon() && isCoinOverlappingSnake()) {
+                coin = coinFactory.createCoin(game, snek, obstacle);
+            }
             // Resume with the default leftward direction.
             // Clear the held direction state as well.
             key = KeyCode.LEFT;
@@ -227,6 +230,16 @@ public class GameController {
         renderFrame();
         animation.stop();
         return DeathOutcome.GAME_OVER;
+    }
+
+    // Reports whether the active coin overlaps the snake head or any body segment.
+    private boolean isCoinOverlappingSnake() {
+        if (coin == null) {
+            return false;
+        }
+        Point coinPos = coin.getPos();
+        return coinPos.equals(snek.getHead())
+                || snek.getBody().contains(coinPos);
     }
 
     // Maps the current key to a model movement command.
@@ -326,9 +339,11 @@ public class GameController {
     }
 
     // Buys the item selected by a number key.
-    // Reject purchases after the run has ended.
+    // Allow purchases only while actively running.
     private void handleShopPurchase(KeyCode eventCode) {
-        if (snek.getDead() || game.gameWon()) {
+        if (game.getState() != GameState.RUNNING
+                || snek.getDead()
+                || game.gameWon()) {
             return;
         }
 
@@ -395,7 +410,7 @@ public class GameController {
     private void togglePause() {
         if (game.getState() == GameState.RUNNING) {
             game.setState(GameState.PAUSED);
-            animation.stop();
+            animation.pause();
             gameView.updatePaused();
         } else if (game.getState() == GameState.PAUSED) {
             game.setState(GameState.RUNNING);

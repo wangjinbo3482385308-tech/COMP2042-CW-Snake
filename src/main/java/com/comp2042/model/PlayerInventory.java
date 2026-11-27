@@ -121,7 +121,11 @@ public class PlayerInventory {
      * @return {@code true} if the magnet is active and the coin is within range
      */
     public boolean isWithinMagnetRange(Point head, Point coinPos) {
-        if (!isMagnetActive() || head == null || coinPos == null) {
+        if (!isMagnetActive()
+                || head == null
+                || coinPos == null
+                || coinPos.x < 0
+                || coinPos.y < 0) {
             return false;
         }
 
